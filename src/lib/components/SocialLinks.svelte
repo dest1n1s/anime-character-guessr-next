@@ -8,12 +8,12 @@
 </script>
 
 <div
-	class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background shadow-xs backdrop-blur-xs inline-flex items-center gap-2 truncate border p-2 px-4 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm"
+	class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background inline-flex items-center gap-2 truncate border p-2 px-4 text-base shadow-xs backdrop-blur-xs transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none sm:text-sm"
 >
 	<div class="relative mr-2 hidden items-center gap-2 text-sm text-gray-600 md:flex">
 		<span>太难了？调下难度</span>
 		<div
-			class="h-0 w-0 animate-bounce border-b-8 border-l-8 border-t-8 border-b-transparent border-l-gray-600 border-t-transparent"
+			class="h-0 w-0 animate-bounce border-t-8 border-b-8 border-l-8 border-t-transparent border-b-transparent border-l-gray-600"
 		></div>
 	</div>
 
@@ -79,7 +79,7 @@
 	</a>
 
 	<a
-		href="https://github.com/kennylimz/anime-character-guessr"
+		href="https://github.com/dest1n1s/anime-character-guessr-next"
 		target="_blank"
 		rel="noopener noreferrer"
 		class="hover:text-primary-600 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100"
