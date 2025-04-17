@@ -1,13 +1,13 @@
-# Anime Character Guessr (SvelteKit Version)
+# Anime Character Guessr Next (SvelteKit Version)
 
 A fun game where you guess anime characters with increasing hints. Built with SvelteKit and powered by Bun.
 
 ## Features
 
-- Search for anime characters or browse by anime/manga
+- Search for anime characters or browse by anime
 - Get feedback on your guesses (popularity, appearances, ratings, etc.)
-- Time limits and hint system
-- Tag contribution system for the community
+- Caching data from Bangumi API using Redis
+- Better multiplayer experience
 
 ## Development
 
@@ -21,14 +21,16 @@ This project uses [Bun](https://bun.sh/) for faster performance and improved dev
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/anime-character-guessr.git
-cd anime-character-guessr-sveltekit
+git clone https://github.com/dest1n1/anime-character-guessr-next.git
 
 # Install dependencies
 bun install
 
 # Start development server
 bun run dev
+
+# Optional: Run Redis server
+docker compose up -d
 ```
 
 ### Building for production
@@ -39,18 +41,17 @@ bun run build
 
 # Preview the built app
 bun run preview
+
+# Optional: Run Redis server
+docker compose up -d
 ```
 
-## API Endpoints
+### Environment Variables
 
-The game uses several API endpoints:
-
-- `/api/search/characters` - Search for characters by keyword
-- `/api/search/subjects` - Search for anime/manga by keyword
-- `/api/subjects/[id]/characters` - Get characters from a specific anime/manga
-- `/api/characters/random` - Get a random character for the game
-- `/api/characters/[id]/appearances` - Get a character's appearances
-- `/api/characters/[id]` - Get character details
+| Variable           | Description                              | Default                  |
+| ------------------ | ---------------------------------------- | ------------------------ |
+| `REDIS_URL`        | The URL of the Redis server              | `redis://localhost:6379` |
+| `USE_REDIS_IN_DEV` | Whether to use Redis in development mode | `false`                  |
 
 ## Data Source
 
