@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: anime-guessr-app
+    restart: unless-stopped
+    ports:
+      - '4173:4173'
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - USE_REDIS_IN_DEV=true
+    depends_on:
+      - redis
+    networks:
+      - app-network
+
   redis:
     image: redis:alpine
     container_name: anime-guessr-redis
@@ -8,6 +25,8 @@ services:
       - '6379:6379'
     command: redis-server --appendonly yes
     restart: unless-stopped
+    volumes:
+      - redis-data:/data
     networks:
       - app-network
 

@@ -10,8 +10,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 			cookies.set('playerId', crypto.randomUUID(), {
 				path: '/',
 				httpOnly: true,
-				secure: true,
-				sameSite: 'strict'
+				sameSite: 'strict',
+				secure: false
 			});
 		}
 

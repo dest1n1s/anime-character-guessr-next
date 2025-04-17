@@ -14,7 +14,7 @@
 </script>
 
 <div
-	class="bg-linear-to-br flex min-h-screen flex-col items-center justify-center from-gray-100 to-gray-200 p-6"
+	class="flex min-h-screen flex-col items-center justify-center bg-linear-to-br from-gray-100 to-gray-200 p-6"
 >
 	<h1 class="mb-12 text-4xl font-bold text-gray-800">动漫角色猜猜乐</h1>
 
@@ -41,14 +41,17 @@
 		<p>
 			一个猜动漫角色的游戏, 建议使用桌面端浏览器游玩。
 			<br />
-			灵感来源<a href="https://blast.tv/counter-strikle" class="text-primary-600 hover:underline"
-				>BLAST.tv</a
-			>, 数据来源<a href="https://bgm.tv/" class="text-primary-600 hover:underline">Bangumi</a>。
+			灵感来源
+			<a href="https://blast.tv/counter-strikle" class="text-primary-600 hover:underline">
+				BLAST.tv
+			</a>, 数据来源
+			<a href="https://bgm.tv/" class="text-primary-600 hover:underline"> Bangumi </a>。
 			<br />
 			在
-			<a href="https://space.bilibili.com/87983557" class="text-primary-600 hover:underline"
-				>@MagicWaterBee</a
-			>制作的
+			<a href="https://space.bilibili.com/87983557" class="text-primary-600 hover:underline">
+				@MagicWaterBee
+			</a>
+			制作的
 			<a
 				href="https://github.com/kennylimz/anime-character-guessr"
 				class="text-primary-600 hover:underline">anime-character-guessr</a
