@@ -2,6 +2,12 @@
 
 A fun game where you guess anime characters with increasing hints. Built with SvelteKit and powered by Bun.
 
+## Acknowledgements
+
+- Inspired by [BLAST.tv](https://blast.tv/counter-strikle)
+- Refactored from [kennylimz/anime-character-guessr](https://github.com/kennylimz/anime-character-guessr)
+- Data source: [Bangumi](https://bgm.tv/)
+
 ## Features
 
 - Search for anime characters or browse by anime
