@@ -8,6 +8,7 @@ A fun game where you guess anime characters with increasing hints. Built with Sv
 - Get feedback on your guesses (popularity, appearances, ratings, etc.)
 - Caching data from Bangumi API using Redis
 - Better multiplayer experience
+- Server-side rendering (SSR) & Server-Sent Events (SSE) for pushing room status updates
 
 ## Development
 
