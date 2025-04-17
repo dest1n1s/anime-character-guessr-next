@@ -18,19 +18,28 @@
 	let searchQuery = $state('');
 	let { onCharacterSelect, isGuessing = false, gameEnd = false, subjectSearch = true } = $props();
 
-	let searchResults = $state<SearchResult[]>([]);
+	let characterResults = $state<SearchResult[]>([]);
+	let subjectResults = $state<Subject[]>([]);
 	let isSearching = $state(false);
 	let isLoadingMore = $state(false);
 	let offset = $state(0);
 	let hasMore = $state(true);
 	let selectedSubject = $state<Subject | null>(null);
 	let searchInput = $state<HTMLInputElement | null>(null);
+	let subjectCharacters = $state<SearchResult[]>([]);
+	let filteredSubjectCharacters = $state<SearchResult[]>([]);
 
 	const INITIAL_LIMIT = 10;
 	const MORE_LIMIT = 5;
 
 	async function handleSearch(reset = false) {
 		if (!searchQuery.trim()) return;
+
+		// If we have a selected subject, just filter the characters
+		if (selectedSubject) {
+			filterSubjectCharacters();
+			return;
+		}
 
 		const currentLimit = reset ? INITIAL_LIMIT : MORE_LIMIT;
 		const currentOffset = reset ? 0 : offset;
@@ -42,21 +51,49 @@
 		}
 
 		try {
-			const results = await searchCharacters(searchQuery.trim(), currentLimit, currentOffset);
+			// Search for both characters and subjects simultaneously
+			const [charactersPromise, subjectsPromise] = [
+				searchCharacters(searchQuery.trim(), currentLimit, currentOffset),
+				subjectSearch ? searchSubjects(searchQuery.trim()) : Promise.resolve([])
+			];
 
-			if (reset) {
-				searchResults = results;
-				offset = INITIAL_LIMIT;
-			} else {
-				searchResults = [...searchResults, ...results];
-				offset = currentOffset + MORE_LIMIT;
-			}
-
-			hasMore = results.length === currentLimit;
+			await Promise.all([
+				charactersPromise
+					.then((characters) => {
+						console.log(characters);
+						if (reset) {
+							characterResults = characters;
+							offset = INITIAL_LIMIT;
+						} else {
+							characterResults = [...characterResults, ...characters];
+							offset = currentOffset + MORE_LIMIT;
+						}
+						hasMore = characters.length === currentLimit;
+					})
+					.catch((error) => {
+						console.error('Failed to fetch characters:', error);
+						if (reset) {
+							characterResults = [];
+						}
+					}),
+				subjectsPromise
+					.then((subjects) => {
+						if (reset) {
+							subjectResults = subjects;
+						}
+					})
+					.catch((error) => {
+						console.error('Failed to fetch subjects:', error);
+						if (reset) {
+							subjectResults = [];
+						}
+					})
+			]);
 		} catch (error) {
 			console.error('Search failed:', error);
 			if (reset) {
-				searchResults = [];
+				characterResults = [];
+				subjectResults = [];
 			}
 		} finally {
 			isSearching = false;
@@ -64,47 +101,96 @@
 		}
 	}
 
-	// async function handleSubjectSearch() {
-	// 	if (!searchQuery.trim()) return;
-
-	// 	isSearching = true;
-
-	// 	try {
-	// 		const results = await searchSubjects(searchQuery.trim());
-	// 		searchResults = results;
-	// 		hasMore = false;
-	// 	} catch (error) {
-	// 		console.error('Subject search failed:', error);
-	// 		searchResults = [];
-	// 	} finally {
-	// 		isSearching = false;
-	// 	}
-	// }
-
 	async function handleSubjectSelect(subject: Subject) {
 		isSearching = true;
 		selectedSubject = subject;
 
+		// Clear the current search query and update the input field
+		if (searchInput) {
+			searchInput.value = `@${subject.name}`;
+			searchQuery = `@${subject.name}`;
+		}
+
 		try {
+			// Fetch characters for the selected subject
 			const characters = await getCharactersBySubjectId(subject.id);
-			searchResults = characters;
+			subjectCharacters = characters;
+			filteredSubjectCharacters = [...characters];
+
+			// Clear other search results
+			characterResults = [];
+			subjectResults = [];
 		} catch (error) {
 			console.error('Failed to fetch characters:', error);
-			searchResults = [];
+			subjectCharacters = [];
+			filteredSubjectCharacters = [];
 		} finally {
 			isSearching = false;
 		}
 	}
 
+	function filterSubjectCharacters() {
+		if (!selectedSubject || !searchQuery) return;
+
+		// Extract the filter query (remove the @subject part)
+		const filterQuery = searchQuery.replace(`@${selectedSubject.name}`, '').trim();
+
+		if (!filterQuery) {
+			// If no filter query, show all characters
+			filteredSubjectCharacters = [...subjectCharacters];
+			return;
+		}
+
+		// Filter characters based on the query
+		filteredSubjectCharacters = subjectCharacters.filter((character) => {
+			return (
+				character.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
+				character.nameCn.toLowerCase().includes(filterQuery.toLowerCase())
+			);
+		});
+	}
+
 	function handleCharacterSelect(character: SearchResult) {
-		onCharacterSelect(character);
+		onCharacterSelect(character.id);
+
+		// Reset the subject selection
+		selectedSubject = null;
+		subjectCharacters = [];
+		filteredSubjectCharacters = [];
+	}
+
+	function handleClearSelectedSubject() {
+		selectedSubject = null;
+		subjectCharacters = [];
+		filteredSubjectCharacters = [];
+		searchQuery = '';
+		if (searchInput) {
+			searchInput.value = '';
+		}
 	}
 
 	const debouncedHandleSearch = debounce(handleSearch, 500);
 
 	async function handleSearchQueryUpdate(v: string) {
 		searchQuery = v;
-		console.log(searchQuery);
+
+		// If we have a selected subject, just filter the results
+		if (selectedSubject) {
+			// Check if the user has removed the @subject tag
+			if (!v.includes(`@${selectedSubject.name}`)) {
+				handleClearSelectedSubject();
+				if (v.trim()) {
+					isSearching = true;
+					await debouncedHandleSearch(true);
+				}
+			} else {
+				filterSubjectCharacters();
+			}
+			return;
+		}
+
+		// Normal search
+		isSearching = true;
 		if (searchQuery.trim()) {
 			await debouncedHandleSearch(true);
 		}
@@ -114,7 +200,7 @@
 <div class="mb-8 flex justify-center">
 	<Combobox.Root
 		type="single"
-		name="favoriteFruit"
+		name="character-search"
 		open={searchQuery !== ''}
 		onOpenChange={(o) => {
 			if (!o) {
@@ -122,79 +208,184 @@
 				if (searchInput) {
 					searchInput.value = '';
 				}
+				if (selectedSubject) {
+					handleClearSelectedSubject();
+				}
 			}
 		}}
 	>
 		<div class="relative">
-			<OrangeSlice class="text-muted-foreground absolute start-3 top-1/2 size-6 -translate-y-1/2" />
+			<img
+				src="https://bangumi.tv/img/favicon.ico"
+				alt="Bangumi"
+				class="absolute start-3 top-1/2 size-6 -translate-y-1/2"
+			/>
 			<Combobox.Input
 				bind:ref={searchInput}
 				oninput={(e) => handleSearchQueryUpdate(e.currentTarget.value)}
-				class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background inline-flex w-[296px] truncate border px-11 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm"
-				placeholder="搜索角色..."
-				aria-label="搜索角色"
+				class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background inline-flex w-[384px] truncate border px-11 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm"
+				placeholder={selectedSubject
+					? `搜索 @${selectedSubject.name} 中的角色...`
+					: '搜索角色和作品...'}
+				aria-label="搜索角色和作品"
 			/>
+			{#if selectedSubject}
+				<button
+					class="text-muted-foreground hover:text-foreground absolute end-12 top-1/2 -translate-y-1/2 text-sm"
+					onclick={handleClearSelectedSubject}
+				>
+					清除
+				</button>
+			{/if}
 			<Combobox.Trigger class="absolute end-3 top-1/2 size-6 -translate-y-1/2">
 				<CaretUpDown class="text-muted-foreground size-6 cursor-pointer" />
 			</Combobox.Trigger>
 		</div>
 		<Combobox.Portal>
 			<Combobox.Content
-				class="border-muted bg-background shadow-popover max-h-96 w-[var(--bits-combobox-anchor-width)] min-w-[var(--bits-combobox-anchor-width)] rounded-xl border py-1 outline-none"
+				class="border-muted bg-background shadow-popover max-h-96 w-[var(--bits-combobox-anchor-width)] min-w-[var(--bits-combobox-anchor-width)] border py-0 outline-none"
 				sideOffset={10}
 			>
-				<Combobox.ScrollUpButton class="flex w-full items-center justify-center">
+				<Combobox.ScrollUpButton
+					class="flex w-full items-center justify-center border-b border-gray-100 py-1"
+				>
 					<CaretDoubleUp class="size-3" />
 				</Combobox.ScrollUpButton>
-				<Combobox.Viewport class="space-y-1 p-1">
-					{#each searchResults as result}
-						<button
-							class="rounded-button data-[highlighted]:bg-muted hover:bg-muted flex h-10 w-full cursor-pointer select-none items-center gap-2 px-1 py-2 text-sm capitalize outline-none"
-							onclick={(e) => {
-								e.preventDefault();
-								searchQuery = '';
-								searchResults = [];
-								offset = 0;
-								hasMore = true;
-								selectedSubject = null;
-								if (searchInput) {
-									searchInput.value = '';
-								}
-								handleCharacterSelect(result);
-							}}
-						>
-							{#if result.icon}
-								<img src={result.icon} alt={result.name} class="h-8 w-8 rounded-sm object-cover" />
-							{:else}
-								<div
-									class="flex h-10 w-10 items-center justify-center rounded-sm bg-gray-100 text-xs text-gray-500"
-								>
-									无图片
-								</div>
-							{/if}
-							<div class="font-medium">{result.name}</div>
-						</button>
-					{:else}
-						{#if isSearching}
-							<span class="block px-5 py-2 text-sm text-muted-foreground"> 搜索中... </span>
-						{:else}
-							<span class="block px-5 py-2 text-sm text-muted-foreground"> 未找到结果 </span>
-						{/if}
-					{/each}
-					{#if hasMore}
-						{#if !isSearching && !isLoadingMore}
+				<Combobox.Viewport class="divide-y divide-gray-100">
+					{#if selectedSubject}
+						<!-- Show characters from selected subject -->
+						<div class="text-muted-foreground bg-gray-50 px-4 py-2 text-sm font-semibold">
+							@{selectedSubject.name} 中的角色
+						</div>
+						{#each filteredSubjectCharacters as character}
 							<button
-								class="data-[highlighted]:bg-muted flex h-10 w-full cursor-pointer select-none items-center justify-center p-2 text-sm font-bold capitalize outline-none"
-								onclick={() => handleSearch(false)}
+								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+								onclick={(e) => {
+									e.preventDefault();
+									searchQuery = '';
+									if (searchInput) {
+										searchInput.value = '';
+									}
+									handleCharacterSelect(character);
+								}}
 							>
-								更多
+								{#if character.icon}
+									<img src={character.icon} alt={character.name} class="h-12 w-12 object-cover" />
+								{:else}
+									<div
+										class="flex h-12 w-12 items-center justify-center bg-gray-100 text-xs text-gray-500"
+									>
+										无图片
+									</div>
+								{/if}
+								<div class="flex flex-col text-left">
+									<div class="text-base font-medium">
+										{character.name}
+									</div>
+									<div class="text-sm text-gray-500">{character.nameCn}</div>
+								</div>
 							</button>
-						{:else if isLoadingMore}
-							<span class="text-muted-foreground block px-5 py-2 text-sm"> 加载中... </span>
+						{:else}
+							<div class="px-4 py-3 text-sm text-muted-foreground">
+								{#if isSearching}
+									搜索中...
+								{:else}
+									未找到结果
+								{/if}
+							</div>
+						{/each}
+					{:else}
+						<!-- Show characters group -->
+						{#if characterResults.length > 0 || isSearching}
+							<div class="text-muted-foreground bg-gray-50 px-4 py-2 text-sm font-semibold">
+								角色
+							</div>
+						{/if}
+						{#each characterResults as character}
+							<button
+								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+								onclick={(e) => {
+									e.preventDefault();
+									searchQuery = '';
+									if (searchInput) {
+										searchInput.value = '';
+									}
+									handleCharacterSelect(character);
+								}}
+							>
+								{#if character.icon}
+									<img src={character.icon} alt={character.name} class="h-12 w-12 object-cover" />
+								{:else}
+									<div
+										class="flex h-12 w-12 items-center justify-center bg-gray-100 text-xs text-gray-500"
+									>
+										无图片
+									</div>
+								{/if}
+								<div class="flex flex-col text-left">
+									<div class="text-base font-medium">
+										{character.name}
+									</div>
+									<div class="text-sm text-gray-500">{character.nameCn}</div>
+								</div>
+							</button>
+						{:else}
+							{#if !subjectResults.length}
+								{#if isSearching}
+									<div class="px-4 py-3 text-sm text-muted-foreground">搜索中...</div>
+								{:else if searchQuery}
+									<div class="px-4 py-3 text-sm text-muted-foreground">未找到结果</div>
+								{/if}
+							{/if}
+						{/each}
+
+						{#if hasMore && characterResults.length > 0}
+							{#if !isSearching && !isLoadingMore}
+								<button
+									class="data-[highlighted]:bg-muted hover:bg-muted flex h-10 w-full cursor-pointer select-none items-center justify-center px-4 py-3 text-sm font-bold outline-none"
+									onclick={() => handleSearch(false)}
+								>
+									更多角色
+								</button>
+							{:else if isLoadingMore}
+								<div class="text-muted-foreground px-4 py-3 text-sm">加载中...</div>
+							{/if}
+						{/if}
+
+						<!-- Show subjects group if we have results -->
+						{#if subjectResults.length > 0}
+							<div class="text-muted-foreground bg-gray-50 px-4 py-2 text-sm font-semibold">
+								作品
+							</div>
+							{#each subjectResults as subject}
+								<button
+									class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+									onclick={(e) => {
+										e.preventDefault();
+										handleSubjectSelect(subject);
+									}}
+								>
+									{#if subject.image}
+										<img src={subject.image} alt={subject.name} class="h-12 w-12 object-cover" />
+									{:else}
+										<div
+											class="flex h-12 w-12 items-center justify-center bg-gray-100 text-xs text-gray-500"
+										>
+											无图片
+										</div>
+									{/if}
+									<div class="flex flex-col text-left">
+										<div class="text-base font-medium">{subject.name}</div>
+										<div class="text-sm text-gray-500">{subject.name_cn}</div>
+									</div>
+								</button>
+							{/each}
 						{/if}
 					{/if}
 				</Combobox.Viewport>
-				<Combobox.ScrollDownButton class="flex w-full items-center justify-center">
+				<Combobox.ScrollDownButton
+					class="flex w-full items-center justify-center border-t border-gray-100 py-1"
+				>
 					<CaretDoubleDown class="size-3" />
 				</Combobox.ScrollDownButton>
 			</Combobox.Content>

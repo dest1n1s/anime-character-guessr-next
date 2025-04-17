@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import axios from 'axios';
 import type { SearchResult } from '$lib/types';
+import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -10,6 +11,19 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!keyword || typeof keyword !== 'string') {
 			return json({ error: 'Invalid keyword' }, { status: 400 });
 		}
+
+		// Create cache key with search parameters
+		const cacheKey = `search:characters:${keyword}:${limit}:${offset}`;
+
+		// Check cache first
+		const cachedResults = await getCache<{ results: SearchResult[] }>(cacheKey);
+		if (cachedResults) {
+			console.log(`Cache hit for character search: ${keyword}`);
+			return json(cachedResults);
+		}
+
+		// Cache miss, fetch from API
+		console.log(`Cache miss for character search: ${keyword}, fetching from API`);
 
 		// Make request to Bangumi API
 		const response = await axios.post(
@@ -36,7 +50,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			popularity: character.stat.collects
 		}));
 
-		return json({ results });
+		const responseData = { results };
+
+		// Cache the search results
+		await setCache(cacheKey, responseData, CACHE_TIMES.SEARCH_RESULTS);
+
+		return json(responseData);
 	} catch (error) {
 		console.error('Search characters error:', error);
 		return json({ error: 'Failed to search characters' }, { status: 500 });

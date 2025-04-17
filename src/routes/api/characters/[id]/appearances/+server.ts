@@ -3,6 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import axios from 'axios';
 import type { Appearance, CharacterAppearances, GameSettings } from '$lib/types';
 import camelcaseKeys from 'camelcase-keys';
+import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
 
 // Types
 type SubjectResponse = {
@@ -47,18 +48,42 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			return json({ error: 'Invalid character ID' }, { status: 400 });
 		}
 
+		// Create a cache key that includes essential settings
+		// This ensures different settings get different cache entries
+		const settingsHash = JSON.stringify({
+			startYear: settings.startYear,
+			endYear: settings.endYear,
+			metaTags: settings.metaTags,
+			includeGame: settings.includeGame
+		});
+		const cacheKey = `appearances:${characterId}:${Buffer.from(settingsHash).toString('base64')}`;
+
+		// Check cache first
+		const cachedAppearances = await getCache<CharacterAppearances>(cacheKey);
+		if (cachedAppearances) {
+			console.log(`Cache hit for appearances of character ${characterId}`);
+			return json(cachedAppearances);
+		}
+
+		// Cache miss, fetch from API
+		console.log(`Cache miss for appearances of character ${characterId}, fetching from API`);
+
 		// Fetch character data
 		const [subjectsResponse, personsResponse] = await fetchCharacterData(characterId);
 
 		// Process the character appearances
 		if (!subjectsResponse || !subjectsResponse.length) {
-			return json(createEmptyResponse());
+			const emptyResponse = createEmptyResponse();
+			await setCache(cacheKey, emptyResponse, CACHE_TIMES.CHARACTER_APPEARANCES);
+			return json(emptyResponse);
 		}
 
 		const filteredAppearances = filterAppearancesBySettings(subjectsResponse, settings);
 
 		if (filteredAppearances.length === 0) {
-			return json(createEmptyResponse());
+			const emptyResponse = createEmptyResponse();
+			await setCache(cacheKey, emptyResponse, CACHE_TIMES.CHARACTER_APPEARANCES);
+			return json(emptyResponse);
 		}
 
 		// Process appearances and collect metadata
@@ -68,6 +93,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 			characterId,
 			personsResponse
 		);
+
+		// Cache the result
+		await setCache(cacheKey, result, CACHE_TIMES.CHARACTER_APPEARANCES);
 
 		return json(result);
 	} catch (error) {
@@ -80,17 +108,42 @@ export const POST: RequestHandler = async ({ params, request }) => {
 async function fetchCharacterData(
 	characterId: number
 ): Promise<[SubjectResponse[], PersonResponse[]]> {
+	// Cache keys for subjects and persons
+	const subjectsCacheKey = `character:${characterId}:subjects`;
+	const personsCacheKey = `character:${characterId}:persons`;
+
+	// Try to get subjects from cache
+	const cachedSubjects = await getCache<SubjectResponse[]>(subjectsCacheKey);
+	const cachedPersons = await getCache<PersonResponse[]>(personsCacheKey);
+
+	if (cachedSubjects && cachedPersons) {
+		return [cachedSubjects, cachedPersons];
+	}
+
+	// Fetch from API for any missing data
 	const [subjectsResponse, personsResponse] = await Promise.all([
-		axios
-			.get(`${API_BASE_URL}/characters/${characterId}/subjects`, {
-				headers: API_HEADERS
-			})
-			.then((response) => camelcaseKeys(response.data)),
-		axios
-			.get(`${API_BASE_URL}/characters/${characterId}/persons`, {
-				headers: API_HEADERS
-			})
-			.then((response) => camelcaseKeys(response.data))
+		cachedSubjects
+			? Promise.resolve(cachedSubjects)
+			: axios
+					.get(`${API_BASE_URL}/characters/${characterId}/subjects`, {
+						headers: API_HEADERS
+					})
+					.then((response) => {
+						const data = camelcaseKeys(response.data);
+						setCache(subjectsCacheKey, data, CACHE_TIMES.CHARACTER_APPEARANCES);
+						return data;
+					}),
+		cachedPersons
+			? Promise.resolve(cachedPersons)
+			: axios
+					.get(`${API_BASE_URL}/characters/${characterId}/persons`, {
+						headers: API_HEADERS
+					})
+					.then((response) => {
+						const data = camelcaseKeys(response.data);
+						setCache(personsCacheKey, data, CACHE_TIMES.CHARACTER_APPEARANCES);
+						return data;
+					})
 	]);
 
 	return [subjectsResponse, personsResponse];
@@ -235,6 +288,15 @@ function addVoiceActorTags(
 // Helper function to get subject details
 async function getSubjectDetails(subjectId: number): Promise<SubjectDetails | null> {
 	try {
+		// Try to get from cache first
+		const cacheKey = `subject:${subjectId}:details`;
+		const cachedDetails = await getCache<SubjectDetails>(cacheKey);
+
+		if (cachedDetails) {
+			return cachedDetails;
+		}
+
+		// Cache miss, fetch from API
 		const response = await axios.get(`${API_BASE_URL}/subjects/${subjectId}`, {
 			headers: API_HEADERS
 		});
@@ -255,7 +317,7 @@ async function getSubjectDetails(subjectId: number): Promise<SubjectDetails | nu
 				.forEach((tag: any) => tags.add(tag.name));
 		}
 
-		return {
+		const details: SubjectDetails = {
 			name: data.name,
 			year: data.date ? parseInt(data.date.split('-')[0]) : null,
 			rating: data.rating?.score || 0,
@@ -263,6 +325,11 @@ async function getSubjectDetails(subjectId: number): Promise<SubjectDetails | nu
 			tags: Array.from(tags),
 			metaTags: data.metaTags || []
 		};
+
+		// Cache the details
+		await setCache(cacheKey, details, CACHE_TIMES.SUBJECT_DETAILS);
+
+		return details;
 	} catch (error) {
 		console.error(`Error fetching subject details for ${subjectId}:`, error);
 		return null;

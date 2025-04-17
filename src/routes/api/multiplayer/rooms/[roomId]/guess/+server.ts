@@ -3,7 +3,7 @@ import type { RequestHandler } from '@sveltejs/kit';
 import { rooms, addRoomEvent } from '$lib/server/gameStore';
 import { isValidRoomId } from '$lib/server/utils';
 import { getCharacterAppearances, generateFeedback, getCharacterDetails } from '$lib/api';
-import type { GuessData, SearchResult, CharacterWithAppearances } from '$lib/types';
+import type { GuessData, CharacterWithAppearances } from '$lib/types';
 
 export const POST: RequestHandler = async ({ fetch, params, cookies, request }) => {
 	try {

@@ -97,8 +97,6 @@ export interface SearchResult {
 	nameCn: string;
 	icon: string | null;
 	image: string | null;
-	gender: string;
-	popularity?: number;
 }
 
 export interface Hints {

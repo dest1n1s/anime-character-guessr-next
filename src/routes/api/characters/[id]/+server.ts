@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import axios from 'axios';
 import type { Character } from '$lib/types';
+import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -10,6 +11,18 @@ export const GET: RequestHandler = async ({ params }) => {
 		if (isNaN(characterId) || characterId <= 0) {
 			return json({ error: 'Invalid character ID' }, { status: 400 });
 		}
+
+		// Check cache first
+		const cacheKey = `character:${characterId}`;
+		const cachedCharacter = await getCache<Character>(cacheKey);
+
+		if (cachedCharacter) {
+			console.log(`Cache hit for character ${characterId}`);
+			return json(cachedCharacter);
+		}
+
+		// Cache miss, fetch from API
+		console.log(`Cache miss for character ${characterId}, fetching from API`);
 
 		// Make request to Bangumi API
 		const response = await axios.get(`https://api.bgm.tv/v0/characters/${characterId}`, {
@@ -40,6 +53,9 @@ export const GET: RequestHandler = async ({ params }) => {
 			summary: characterData.summary || '',
 			tags: characterTags
 		};
+
+		// Cache the character data
+		await setCache(cacheKey, character, CACHE_TIMES.CHARACTER);
 
 		return json(character);
 	} catch (error) {

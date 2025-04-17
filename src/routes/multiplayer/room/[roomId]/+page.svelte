@@ -4,7 +4,7 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import type { Room, Player, GameEvent, Character, SearchResult, GuessData } from '$lib/types';
+	import type { Room, Player, GameEvent, Character, GuessData } from '$lib/types';
 	import { source } from 'sveltekit-sse';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import GuessesTable from '$lib/components/GuessesTable.svelte';
@@ -144,12 +144,14 @@
 				}
 
 				// Update room state based on the event data
-				room = event.data.room;
+				if (event.data.room) {
+					room = event.data.room;
 
-				if (room) {
-					currentPlayer = room.players.find((p) => p.id === data.playerId) || null;
+					// Make sure currentPlayer is updated
+					currentPlayer = room?.players.find((p) => p.id === data.playerId) || null;
+
 					// Update time remaining if available
-					if (room.gameState.timeRemaining !== null) {
+					if (room && room.gameState.timeRemaining !== null) {
 						roundTimeLeft = room.gameState.timeRemaining;
 					}
 				}
@@ -395,7 +397,7 @@
 		}
 	}
 
-	async function handleCharacterSelect(character: SearchResult) {
+	async function handleCharacterSelect(id: number) {
 		if (isGuessing || !room || room.gameState.status !== 'playing') return;
 
 		// Check if the player has used all their guesses
@@ -418,7 +420,7 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					characterId: character.id,
+					characterId: id,
 					playerId: data.playerId
 				})
 			});
@@ -641,7 +643,7 @@
 					{/each}
 				</div>
 
-				{#if room.gameState.status === 'waiting' && currentPlayer?.isHost}
+				{#if room.gameState.status === 'waiting' && currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
 					<div class="mt-4 flex flex-col items-center">
 						<button
 							class="cursor-pointer rounded-lg bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
@@ -681,7 +683,7 @@
 							<p class="mt-2 text-sm text-gray-600">所有玩家准备就绪后才能开始游戏</p>
 						{/if}
 					</div>
-				{:else if room.gameState.status === 'waiting' && !currentPlayer?.isReady}
+				{:else if room.gameState.status === 'waiting' && currentPlayer && 'isReady' in currentPlayer && !currentPlayer.isReady}
 					<div class="mt-4 flex flex-col items-center">
 						<button
 							class="cursor-pointer rounded-lg bg-blue-600 px-6 py-2 text-white transition-colors hover:bg-blue-700"
@@ -714,7 +716,7 @@
 							<p class="mt-2 text-sm text-red-600">{errorMessage}</p>
 						{/if}
 					</div>
-				{:else if room.gameState.status === 'waiting' && currentPlayer?.isReady}
+				{:else if room.gameState.status === 'waiting' && currentPlayer && 'isReady' in currentPlayer && currentPlayer.isReady}
 					<div class="mt-4 flex flex-col items-center">
 						<button
 							class="rounded-lg border border-blue-600 px-6 py-2 text-blue-600 transition-colors hover:bg-blue-50"
@@ -758,8 +760,9 @@
 								第 {room.currentRound}/{room.totalRounds} 回合
 							</h2>
 							<p class="text-gray-600">
-								剩余猜测: {room.settings.maxAttempts - (currentPlayer?.guesses?.length || 0)} / {room
-									.settings.maxAttempts}
+								剩余猜测: {room.settings.maxAttempts -
+									(currentPlayer && 'guesses' in currentPlayer ? currentPlayer.guesses.length : 0)} /
+								{room.settings.maxAttempts}
 							</p>
 						</div>
 
@@ -775,11 +778,12 @@
 							onCharacterSelect={handleCharacterSelect}
 							{isGuessing}
 							gameEnd={room.gameState.status !== 'playing' ||
-								(currentPlayer?.guesses?.length || 0) >= room.settings.maxAttempts}
+								(currentPlayer && 'guesses' in currentPlayer ? currentPlayer.guesses.length : 0) >=
+									room.settings.maxAttempts}
 							subjectSearch={true}
 						/>
 
-						{#if room.gameState.status === 'playing' && (currentPlayer?.guesses?.length || 0) < room.settings.maxAttempts}
+						{#if room.gameState.status === 'playing' && currentPlayer && 'guesses' in currentPlayer && currentPlayer.guesses.length < room.settings.maxAttempts}
 							<div class="mt-4 flex justify-center">
 								<button
 									class="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
@@ -831,7 +835,7 @@
 							</div>
 						{/if}
 
-						{#if currentPlayer?.isHost}
+						{#if currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
 							<div class="mt-6">
 								{#if room.currentRound < room.totalRounds}
 									<button
@@ -893,7 +897,7 @@
 							</table>
 						</div>
 
-						{#if currentPlayer?.isHost}
+						{#if currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
 							<div class="mt-6">
 								<button
 									class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"

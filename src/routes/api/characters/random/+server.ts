@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
 import axios from 'axios';
 import type { Character, GameSettings, Subject } from '$lib/types';
+import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const settings: GameSettings = await request.json();
@@ -18,44 +19,67 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (settings.useIndex && settings.indexId) {
 		// Get index info first
 		try {
-			const indexResponse = await axios.get(`https://api.bgm.tv/v0/indices/${settings.indexId}`, {
-				headers: {
-					Accept: 'application/json',
-					'User-Agent': 'AnimeCharacterGuessr/1.0'
-				}
-			});
+			// Try to get index info from cache
+			const indexCacheKey = `index:${settings.indexId}:info`;
+			let indexData = await getCache<any>(indexCacheKey);
+
+			if (!indexData) {
+				// Cache miss, fetch from API
+				console.log(`Cache miss for index info: ${settings.indexId}, fetching from API`);
+				const indexResponse = await axios.get(`https://api.bgm.tv/v0/indices/${settings.indexId}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'AnimeCharacterGuessr/1.0'
+					}
+				});
+				indexData = indexResponse.data;
+
+				// Cache the index info
+				await setCache(indexCacheKey, indexData, CACHE_TIMES.SUBJECT_DETAILS);
+			} else {
+				console.log(`Cache hit for index info: ${settings.indexId}`);
+			}
 
 			// Get total from index info
-			total = indexResponse.data.total + settings.addedSubjects.length;
+			total = indexData.total + settings.addedSubjects.length;
 
 			// Get a random offset within the total number of subjects
 			randomOffset = Math.floor(Math.random() * total);
 
-			if (randomOffset >= indexResponse.data.total) {
+			if (randomOffset >= indexData.total) {
 				// Select from added subjects
-				randomOffset = randomOffset - indexResponse.data.total;
+				randomOffset = randomOffset - indexData.total;
 				subject = settings.addedSubjects[randomOffset];
 			} else {
-				// Fetch one subject from the index at the random offset
-				const subjectResponse = await axios.get(
-					`https://api.bgm.tv/v0/indices/${settings.indexId}/subjects?limit=1&offset=${randomOffset}`,
-					{
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'AnimeCharacterGuessr/1.0'
-						}
-					}
-				);
+				// Cache key for index subjects at this offset
+				const subjectsCacheKey = `index:${settings.indexId}:subjects:offset:${randomOffset}:limit:1`;
+				let subjectsData = await getCache<any>(subjectsCacheKey);
 
-				if (
-					!subjectResponse.data ||
-					!subjectResponse.data.data ||
-					subjectResponse.data.data.length === 0
-				) {
+				if (!subjectsData) {
+					// Cache miss, fetch from API
+					console.log(`Cache miss for index subjects at offset ${randomOffset}, fetching from API`);
+					const subjectResponse = await axios.get(
+						`https://api.bgm.tv/v0/indices/${settings.indexId}/subjects?limit=1&offset=${randomOffset}`,
+						{
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'AnimeCharacterGuessr/1.0'
+							}
+						}
+					);
+					subjectsData = subjectResponse.data;
+
+					// Cache the subjects data
+					await setCache(subjectsCacheKey, subjectsData, CACHE_TIMES.SUBJECT_DETAILS);
+				} else {
+					console.log(`Cache hit for index subjects at offset ${randomOffset}`);
+				}
+
+				if (!subjectsData || !subjectsData.data || subjectsData.data.length === 0) {
 					throw new Error('No subjects found in index');
 				}
 
-				subject = subjectResponse.data.data[0];
+				subject = subjectsData.data[0];
 			}
 		} catch (error) {
 			console.error('Failed to fetch index:', error);
@@ -80,52 +104,83 @@ export const POST: RequestHandler = async ({ request }) => {
 			randomOffset = randomOffset - settings.topNSubjects;
 			subject = settings.addedSubjects[randomOffset];
 		} else {
-			// Fetch one subject at the random offset using POST search API
-			const response = await axios.post(
-				`https://api.bgm.tv/v0/search/subjects?limit=1&offset=${randomOffset}`,
-				{
-					sort: 'heat',
-					filter: {
-						type: [2], // Anime type
-						air_date: [`>=${settings.startYear}-01-01`, `<${minDate}`],
-						meta_tags: settings.metaTags.filter((tag) => tag !== '')
-					}
-				},
-				{
-					headers: {
-						'Content-Type': 'application/json',
-						Accept: 'application/json',
-						'User-Agent': 'AnimeCharacterGuessr/1.0'
-					}
+			// Create a unique cache key for this search query
+			// Note: We include randomOffset in the cache key to ensure random selection
+			// even when using cached results
+			const searchParams = {
+				sort: 'heat',
+				filter: {
+					type: [2], // Anime type
+					air_date: [`>=${settings.startYear}-01-01`, `<${minDate}`],
+					meta_tags: settings.metaTags.filter((tag) => tag !== '')
 				}
-			);
+			};
 
-			if (!response.data || !response.data.data || response.data.data.length === 0) {
+			// Create a deterministic cache key from the search parameters
+			const searchCacheKey = `search:subjects:${JSON.stringify(searchParams)}:offset:${randomOffset}:limit:1`;
+			let searchData = await getCache<any>(searchCacheKey);
+
+			if (!searchData) {
+				// Cache miss, fetch from API
+				console.log(`Cache miss for subject search at offset ${randomOffset}, fetching from API`);
+				const response = await axios.post(
+					`https://api.bgm.tv/v0/search/subjects?limit=1&offset=${randomOffset}`,
+					searchParams,
+					{
+						headers: {
+							'Content-Type': 'application/json',
+							Accept: 'application/json',
+							'User-Agent': 'AnimeCharacterGuessr/1.0'
+						}
+					}
+				);
+				searchData = response.data;
+
+				// Cache the search results
+				await setCache(searchCacheKey, searchData, CACHE_TIMES.SEARCH_RESULTS);
+			} else {
+				console.log(`Cache hit for subject search at offset ${randomOffset}`);
+			}
+
+			if (!searchData || !searchData.data || searchData.data.length === 0) {
 				return json({ error: 'Failed to fetch subject at random offset' }, { status: 400 });
 			}
 
-			subject = response.data.data[0];
+			subject = searchData.data[0];
 		}
 	}
 
-	// Get characters for the selected subject
-	const charactersResponse = await axios.get(
-		`https://api.bgm.tv/v0/subjects/${subject.id}/characters`,
-		{
-			headers: {
-				Accept: 'application/json',
-				'User-Agent': 'AnimeCharacterGuessr/1.0'
+	// Get characters for the selected subject from cache or API
+	const charactersCacheKey = `subject:${subject.id}:characters:raw`;
+	let charactersData = await getCache<any>(charactersCacheKey);
+
+	if (!charactersData) {
+		// Cache miss, fetch from API
+		console.log(`Cache miss for subject characters (raw): ${subject.id}, fetching from API`);
+		const charactersResponse = await axios.get(
+			`https://api.bgm.tv/v0/subjects/${subject.id}/characters`,
+			{
+				headers: {
+					Accept: 'application/json',
+					'User-Agent': 'AnimeCharacterGuessr/1.0'
+				}
 			}
-		}
-	);
+		);
+		charactersData = charactersResponse.data;
+
+		// Cache the characters data
+		await setCache(charactersCacheKey, charactersData, CACHE_TIMES.SUBJECT_CHARACTERS);
+	} else {
+		console.log(`Cache hit for subject characters (raw): ${subject.id}`);
+	}
 
 	// Filter and select characters based on mainCharacterOnly setting
 	let filteredCharacters;
 	if (settings.mainCharacterOnly) {
-		filteredCharacters = charactersResponse.data.filter((c: any) => c.relation === '主角');
+		filteredCharacters = charactersData.filter((c: any) => c.relation === '主角');
 	} else {
 		// Get both main and supporting characters but limit to characterNum
-		filteredCharacters = charactersResponse.data
+		filteredCharacters = charactersData
 			.filter((c: any) => c.relation === '主角' || c.relation === '配角')
 			.slice(0, settings.characterNum);
 	}
@@ -135,25 +190,38 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 
 	// Randomly select one character from the filtered characters
+	// This random selection should always be performed at runtime
 	const randomCharacterIndex = Math.floor(Math.random() * filteredCharacters.length);
 	const selectedCharacter = filteredCharacters[randomCharacterIndex];
 
-	// Get additional character details
-	let characterDetail = selectedCharacter;
-	try {
-		const characterDetailResponse = await axios.get(
-			`https://api.bgm.tv/v0/characters/${selectedCharacter.id}`,
-			{
-				headers: {
-					Accept: 'application/json',
-					'User-Agent': 'AnimeCharacterGuessr/1.0'
+	// Get additional character details from cache or API
+	const characterCacheKey = `character:${selectedCharacter.id}`;
+	let characterDetail = await getCache<any>(characterCacheKey);
+
+	if (!characterDetail) {
+		// Cache miss, fetch from API
+		console.log(`Cache miss for character details: ${selectedCharacter.id}, fetching from API`);
+		try {
+			const characterDetailResponse = await axios.get(
+				`https://api.bgm.tv/v0/characters/${selectedCharacter.id}`,
+				{
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'AnimeCharacterGuessr/1.0'
+					}
 				}
-			}
-		);
-		characterDetail = characterDetailResponse.data;
-	} catch (error) {
-		console.warn(`Failed to get detailed info for character ${selectedCharacter.id}:`, error);
-		// Continue with the basic character data we already have
+			);
+			characterDetail = characterDetailResponse.data;
+
+			// Cache the character details
+			await setCache(characterCacheKey, characterDetail, CACHE_TIMES.CHARACTER);
+		} catch (error) {
+			console.warn(`Failed to get detailed info for character ${selectedCharacter.id}:`, error);
+			// Continue with the basic character data we already have
+			characterDetail = selectedCharacter;
+		}
+	} else {
+		console.log(`Cache hit for character details: ${selectedCharacter.id}`);
 	}
 
 	// Extract tags from the character detail

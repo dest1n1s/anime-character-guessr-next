@@ -72,7 +72,7 @@
 		aria-label="Bangumi"
 	>
 		<img
-			src="https://avatars.githubusercontent.com/u/7521082?s=200&v=4"
+			src="https://bangumi.tv/img/favicon.ico"
 			alt="Bangumi"
 			class="h-5 w-5 rounded-full transition-transform hover:scale-110"
 		/>

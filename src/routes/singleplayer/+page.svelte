@@ -15,8 +15,12 @@
 		initGuessesLeft,
 		gameResult
 	} from '$lib/store';
-	import { getRandomCharacter, getCharacterAppearances, generateFeedback } from '$lib/api';
-	import type { Character, SearchResult, GameSettings } from '$lib/types';
+	import {
+		getRandomCharacter,
+		getCharacterAppearances,
+		generateFeedback,
+		getCharacterDetails
+	} from '$lib/api';
 
 	// Components
 	import SearchBar from '$lib/components/SearchBar.svelte';
@@ -94,7 +98,7 @@
 	}
 
 	// Handle character selection from search
-	async function handleCharacterSelect(character: SearchResult) {
+	async function handleCharacterSelect(id: number) {
 		if ($isGuessing || !$answerCharacter) return;
 
 		$isGuessing = true;
@@ -102,14 +106,15 @@
 
 		try {
 			// Special easter eggs
-			if (character.id === 56822 || character.id === 56823) {
+			if (id === 56822 || id === 56823) {
 				alert('有点意思');
 			}
 
+			const character = await getCharacterDetails(id);
 			// Get character appearances
-			const appearances = await getCharacterAppearances(character.id, $gameSettings);
+			const appearances = await getCharacterAppearances(id, $gameSettings);
 
-			const isCorrect = character.id === $answerCharacter.id;
+			const isCorrect = id === $answerCharacter.id;
 			$guessesLeft = $guessesLeft - 1;
 
 			if (isCorrect) {
@@ -271,15 +276,14 @@
 				subjectSearch={$currentSubjectSearch}
 			/>
 		</div>
-
+		<!-- 
 		{#if $currentTimeLimit}
 			<Timer
 				timeLimit={$currentTimeLimit}
 				onTimeUp={handleTimeUp}
 				isActive={!$gameEnd && !$isGuessing}
-				reset={$shouldResetTimer}
 			/>
-		{/if}
+		{/if} -->
 
 		<GameInfo
 			gameEnd={$gameEnd}
