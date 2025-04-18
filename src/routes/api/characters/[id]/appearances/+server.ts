@@ -4,6 +4,7 @@ import axios from 'axios';
 import type { Appearance, CharacterAppearances, GameSettings } from '$lib/types';
 import camelcaseKeys from 'camelcase-keys';
 import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
+import { getCharacterMoegirlTags } from '$lib/server/db';
 
 // Types
 type SubjectResponse = {
@@ -241,7 +242,7 @@ async function processAppearances(
 	);
 
 	// Collect all meta tags
-	const allMetaTags = new Set<string>();
+	let allMetaTags = new Set<string>();
 
 	// Add meta tags from all valid appearances
 	validResults.forEach((result) => {
@@ -254,17 +255,20 @@ async function processAppearances(
 	}
 
 	// Add voice actor tags if applicable
-	const metaTagsWithVA =
-		!FILTERED_CHARACTER_IDS.includes(characterId) && personsResponse
-			? addVoiceActorTags(personsResponse, allMetaTags)
-			: allMetaTags;
+	if (!FILTERED_CHARACTER_IDS.includes(characterId)) {
+		allMetaTags = addVoiceActorTags(personsResponse, allMetaTags);
+	}
+
+	const moegirlTags = await getCharacterMoegirlTags(characterId);
+	console.log(`Moegirl tags for character ${characterId}:`, moegirlTags);
+	moegirlTags.forEach((tag) => allMetaTags.add(tag));
 
 	return {
 		appearances: validAppearances,
 		latestAppearance,
 		earliestAppearance,
 		highestRating,
-		metaTags: Array.from(metaTagsWithVA)
+		metaTags: Array.from(allMetaTags)
 	};
 }
 

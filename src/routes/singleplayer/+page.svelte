@@ -37,6 +37,7 @@
 	let showSettingsPopup = $state(false);
 	let showHelpPopup = $state(false);
 	let showGameEndPopup = $state(false);
+	let initializing = $state(true);
 	let timeUpFlag = false;
 
 	// Game initialization
@@ -58,6 +59,7 @@
 	// Initialize a new game with current settings
 	async function initializeGame() {
 		resetGame();
+		initializing = true;
 
 		// Reset game state
 		$guessesLeft = $gameSettings.maxAttempts;
@@ -95,6 +97,7 @@
 				second: '🚫提示未启用'
 			};
 		}
+		initializing = false;
 	}
 
 	// Handle character selection from search
@@ -261,7 +264,7 @@
 
 <div class="relative min-h-screen bg-gray-50 px-4 py-16">
 	<div class="mx-auto max-w-7xl">
-		<div class="absolute right-4 top-4 z-10">
+		<div class="absolute top-4 right-4 z-10">
 			<SocialLinks
 				onSettingsClick={() => (showSettingsPopup = true)}
 				onHelpClick={() => (showHelpPopup = true)}
@@ -274,7 +277,12 @@
 				isGuessing={$isGuessing}
 				gameEnd={$gameEnd}
 				subjectSearch={$currentSubjectSearch}
+				disabled={initializing}
 			/>
+
+			{#if initializing}
+				<div class="flex h-full items-center justify-center">初始化游戏中...</div>
+			{/if}
 		</div>
 		<!-- 
 		{#if $currentTimeLimit}

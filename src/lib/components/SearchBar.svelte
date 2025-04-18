@@ -16,7 +16,13 @@
 	import { debounce } from 'ts-debounce';
 
 	let searchQuery = $state('');
-	let { onCharacterSelect, isGuessing = false, gameEnd = false, subjectSearch = true } = $props();
+	let {
+		onCharacterSelect,
+		isGuessing = false,
+		gameEnd = false,
+		subjectSearch = true,
+		disabled = false
+	} = $props();
 
 	let characterResults = $state<SearchResult[]>([]);
 	let subjectResults = $state<Subject[]>([]);
@@ -213,6 +219,7 @@
 				}
 			}
 		}}
+		{disabled}
 	>
 		<div class="relative">
 			<img
@@ -223,7 +230,7 @@
 			<Combobox.Input
 				bind:ref={searchInput}
 				oninput={(e) => handleSearchQueryUpdate(e.currentTarget.value)}
-				class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background inline-flex w-[384px] truncate border px-11 text-base transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 sm:text-sm"
+				class="h-input rounded-9px border-border-input bg-background placeholder:text-foreground-alt/50 focus:ring-foreground focus:ring-offset-background inline-flex w-[384px] truncate border px-11 text-base transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-none sm:text-sm"
 				placeholder={selectedSubject
 					? `搜索 @${selectedSubject.name} 中的角色...`
 					: '搜索角色和作品...'}
@@ -259,7 +266,7 @@
 						</div>
 						{#each filteredSubjectCharacters as character}
 							<button
-								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm outline-none select-none"
 								onclick={(e) => {
 									e.preventDefault();
 									searchQuery = '';
@@ -303,7 +310,7 @@
 						{/if}
 						{#each characterResults as character}
 							<button
-								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+								class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm outline-none select-none"
 								onclick={(e) => {
 									e.preventDefault();
 									searchQuery = '';
@@ -342,7 +349,7 @@
 						{#if hasMore && characterResults.length > 0}
 							{#if !isSearching && !isLoadingMore}
 								<button
-									class="data-[highlighted]:bg-muted hover:bg-muted flex h-10 w-full cursor-pointer select-none items-center justify-center px-4 py-3 text-sm font-bold outline-none"
+									class="data-[highlighted]:bg-muted hover:bg-muted flex h-10 w-full cursor-pointer items-center justify-center px-4 py-3 text-sm font-bold outline-none select-none"
 									onclick={() => handleSearch(false)}
 								>
 									更多角色
@@ -359,7 +366,7 @@
 							</div>
 							{#each subjectResults as subject}
 								<button
-									class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer select-none items-center gap-3 px-4 py-3 text-sm outline-none"
+									class="data-[highlighted]:bg-muted hover:bg-muted flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm outline-none select-none"
 									onclick={(e) => {
 										e.preventDefault();
 										handleSubjectSelect(subject);
