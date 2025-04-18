@@ -16,19 +16,50 @@
 	let searchQuery = $state('');
 	let searchResults: Subject[] = $state([]);
 	let isSearching = $state(false);
+	let showConfirmation = $state(false);
+	let settingToChange = $state<{ key: string; value: any } | null>(null);
 
 	// Handle setting changes
 	function handleNumberChange(setting: string, event: Event) {
 		const target = event.target as HTMLInputElement;
 		const value = parseInt(target.value);
 		if (!isNaN(value)) {
-			onSettingsChange(setting, value);
+			if (hideRestart) {
+				// If we're in an active game, show confirmation before changing
+				settingToChange = { key: setting, value };
+				showConfirmation = true;
+			} else {
+				// Direct change for non-active games
+				onSettingsChange(setting, value);
+			}
 		}
 	}
 
 	function handleBooleanChange(setting: string, event: Event) {
 		const target = event.target as HTMLInputElement;
-		onSettingsChange(setting, target.checked);
+		if (hideRestart) {
+			// If we're in an active game, show confirmation before changing
+			settingToChange = { key: setting, value: target.checked };
+			showConfirmation = true;
+		} else {
+			// Direct change for non-active games
+			onSettingsChange(setting, target.checked);
+		}
+	}
+
+	// Confirm the setting change in active game
+	function confirmSettingChange() {
+		if (settingToChange) {
+			onSettingsChange(settingToChange.key, settingToChange.value);
+			showConfirmation = false;
+			settingToChange = null;
+		}
+	}
+
+	// Cancel the setting change
+	function cancelSettingChange() {
+		showConfirmation = false;
+		settingToChange = null;
 	}
 
 	// Search for subjects
@@ -66,6 +97,14 @@
 
 	// Apply preset settings
 	function applyPreset(preset: 'easy' | 'medium' | 'hard') {
+		// For active games, show confirmation before applying preset
+		if (hideRestart) {
+			settingToChange = { key: 'preset', value: preset };
+			showConfirmation = true;
+			return;
+		}
+
+		// Apply preset directly for non-active games
 		switch (preset) {
 			case 'easy':
 				onSettingsChange('startYear', new Date().getFullYear() - 10);
@@ -73,6 +112,7 @@
 				onSettingsChange('maxAttempts', 7);
 				onSettingsChange('enableHints', true);
 				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 5);
 				break;
 			case 'medium':
 				onSettingsChange('startYear', new Date().getFullYear() - 20);
@@ -80,6 +120,7 @@
 				onSettingsChange('maxAttempts', 7);
 				onSettingsChange('enableHints', true);
 				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 7);
 				break;
 			case 'hard':
 				onSettingsChange('startYear', 2000);
@@ -87,8 +128,41 @@
 				onSettingsChange('maxAttempts', 8);
 				onSettingsChange('enableHints', false);
 				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 10);
 				break;
 		}
+	}
+
+	// Apply preset with confirmation for active game
+	function applyPresetSettings(preset: 'easy' | 'medium' | 'hard') {
+		switch (preset) {
+			case 'easy':
+				onSettingsChange('startYear', new Date().getFullYear() - 10);
+				onSettingsChange('topNSubjects', 100);
+				onSettingsChange('maxAttempts', 7);
+				onSettingsChange('enableHints', true);
+				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 5);
+				break;
+			case 'medium':
+				onSettingsChange('startYear', new Date().getFullYear() - 20);
+				onSettingsChange('topNSubjects', 200);
+				onSettingsChange('maxAttempts', 7);
+				onSettingsChange('enableHints', true);
+				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 7);
+				break;
+			case 'hard':
+				onSettingsChange('startYear', 2000);
+				onSettingsChange('topNSubjects', 400);
+				onSettingsChange('maxAttempts', 8);
+				onSettingsChange('enableHints', false);
+				onSettingsChange('timeLimit', 600);
+				onSettingsChange('totalRounds', 10);
+				break;
+		}
+		showConfirmation = false;
+		settingToChange = null;
 	}
 </script>
 
@@ -106,6 +180,9 @@
 
 		<div class="mb-4 border-b border-gray-200 pb-2">
 			<h2 class="text-2xl font-bold text-gray-800">游戏设置</h2>
+			{#if hideRestart}
+				<p class="mt-1 text-sm text-gray-600">修改设置将在下一回合生效。当前回合的设置保持不变。</p>
+			{/if}
 		</div>
 
 		<div class="grid gap-6 md:grid-cols-2">
@@ -220,6 +297,19 @@
 				<h3 class="text-lg font-semibold text-gray-800">游戏规则</h3>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
+						<label for="totalRounds" class="text-sm font-medium text-gray-700">总回合数:</label>
+						<input
+							id="totalRounds"
+							type="number"
+							min="1"
+							max="20"
+							value={gameSettings.totalRounds || 5}
+							onchange={(e) => handleNumberChange('totalRounds', e)}
+							class="w-20 rounded-md border border-gray-300 px-2 py-1 text-right"
+						/>
+					</div>
+
+					<div class="flex items-center justify-between">
 						<label for="maxAttempts" class="text-sm font-medium text-gray-700">最大猜测次数:</label>
 						<input
 							id="maxAttempts"
@@ -242,7 +332,14 @@
 							value={gameSettings.timeLimit === null ? 0 : gameSettings.timeLimit}
 							onchange={(e) => {
 								const value = parseInt((e.target as HTMLInputElement).value);
-								onSettingsChange('timeLimit', value <= 0 ? null : value);
+								if (hideRestart) {
+									// If we're in an active game, show confirmation before changing
+									settingToChange = { key: 'timeLimit', value: value <= 0 ? null : value };
+									showConfirmation = true;
+								} else {
+									// Direct change for non-active games
+									onSettingsChange('timeLimit', value <= 0 ? null : value);
+								}
 							}}
 							class="w-20 rounded-md border border-gray-300 px-2 py-1 text-right"
 						/>
@@ -363,3 +460,29 @@
 		</div>
 	</div>
 </div>
+
+<!-- Confirmation dialog for setting changes in active games -->
+{#if showConfirmation}
+	<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+		<div class="w-[95vw] max-w-md rounded-lg bg-white p-6 shadow-xl">
+			<h3 class="text-lg font-semibold text-gray-800">确认更改设置</h3>
+			<p class="mt-2 text-gray-600">你确定要更改这个设置吗？更改将在当前回合结束后生效。</p>
+			<div class="mt-4 flex justify-end gap-3">
+				<button
+					class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+					onclick={cancelSettingChange}
+				>
+					取消
+				</button>
+				<button
+					class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+					onclick={settingToChange?.key === 'preset'
+						? () => applyPresetSettings(settingToChange?.value)
+						: confirmSettingChange}
+				>
+					确认更改
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}

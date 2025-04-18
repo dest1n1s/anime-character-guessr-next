@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ fetch, params, cookies, request }) 
 			// Initialize game state
 			room.gameState.status = 'playing';
 			room.currentRound = 1;
-			room.totalRounds = 3; // Default to 3 rounds per game
+			room.totalRounds = room.settings.totalRounds;
 
 			// Reset all player scores for a new game
 			room.players.forEach((p) => {
@@ -67,6 +67,7 @@ export const POST: RequestHandler = async ({ fetch, params, cookies, request }) 
 			});
 		} else if (room.gameState.status === 'roundEnd') {
 			// Starting the next round
+			room.totalRounds = room.settings.totalRounds;
 
 			// Check if there are more rounds to play
 			if (room.currentRound >= room.totalRounds) {

@@ -16,7 +16,8 @@ export const defaultGameSettings: GameSettings = {
 	enableHints: true,
 	includeGame: false,
 	timeLimit: null,
-	subjectSearch: true
+	subjectSearch: true,
+	totalRounds: 5
 };
 
 // Game settings store

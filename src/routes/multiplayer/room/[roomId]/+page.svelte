@@ -4,13 +4,14 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import type { Room, Player, GameEvent, Character, GuessData } from '$lib/types';
+	import type { Room, Player, GameEvent, Character, GuessData, GameSettings } from '$lib/types';
 	import { source } from 'sveltekit-sse';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import GuessesTable from '$lib/components/GuessesTable.svelte';
 	import AllGuessesTable from '$lib/components/AllGuessesTable.svelte';
 	import GameEndPopup from '$lib/components/GameEndPopup.svelte';
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
+	import SettingsPopup from '$lib/components/SettingsPopup.svelte';
 
 	let { data } = $props();
 
@@ -27,6 +28,7 @@
 	let doReconnect = $state(true);
 	let roundTimeLeft = $state(0);
 	let errorMessage = $state('');
+	let showSettingsPopup = $state(false);
 	let notifications: {
 		message: string;
 		id: number;
@@ -175,6 +177,44 @@
 						// Show notification
 						showNotification('房间数据已同步', 'info');
 					}
+				} else if (event.data.source === 'settings_update') {
+					// Show a notification about the setting update
+					const settingKey = event.data.updatedSetting;
+					if (settingKey) {
+						let settingName = '';
+						switch (settingKey) {
+							case 'totalRounds':
+								settingName = '总回合数';
+								break;
+							case 'maxAttempts':
+								settingName = '最大猜测次数';
+								break;
+							case 'timeLimit':
+								settingName = '时间限制';
+								break;
+							case 'startYear':
+								settingName = '开始年份';
+								break;
+							case 'endYear':
+								settingName = '结束年份';
+								break;
+							case 'topNSubjects':
+								settingName = '热门作品数';
+								break;
+							case 'characterNum':
+								settingName = '每作品角色数';
+								break;
+							case 'mainCharacterOnly':
+								settingName = '只包含主角';
+								break;
+							default:
+								settingName = settingKey;
+						}
+
+						showNotification(`游戏设置已更新: ${settingName}`, 'info');
+					} else {
+						showNotification('游戏设置已更新', 'info');
+					}
 				}
 
 				// Update room state based on the event data
@@ -230,7 +270,7 @@
 
 				// If current player is host, show button to start next round
 				if (currentPlayer?.isHost) {
-					if (room && room.currentRound >= room.totalRounds) {
+					if (room && room.currentRound >= (room.settings.totalRounds || room.totalRounds)) {
 						// All rounds completed, end the game
 						endGame();
 					}
@@ -565,6 +605,39 @@
 				isSyncing = false;
 			});
 	}
+
+	// Function to handle settings changes
+	async function handleSettingsChange(settingKey: string, settingValue: any) {
+		if (!room) return;
+
+		const response = await fetch(`/api/multiplayer/rooms/${room.id}/settings`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				key: settingKey,
+				value: settingValue
+			})
+		});
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			console.error('Settings update error:', data.error);
+			showNotification(data.error || '更新设置失败', 'error');
+		}
+	}
+
+	// Handle settings button click
+	function handleOpenSettings() {
+		showSettingsPopup = true;
+	}
+
+	// Handle closing settings popup
+	function handleCloseSettings() {
+		showSettingsPopup = false;
+	}
 </script>
 
 <svelte:head>
@@ -573,7 +646,10 @@
 
 <div class="relative min-h-screen bg-linear-to-br from-gray-100 to-gray-200 p-6">
 	<div class="absolute top-4 right-4 z-10">
-		<SocialLinks onSettingsClick={() => {}} onHelpClick={() => {}} />
+		<SocialLinks
+			onSettingsClick={currentPlayer?.isHost ? handleOpenSettings : () => {}}
+			onHelpClick={() => {}}
+		/>
 	</div>
 
 	<div class="mx-auto mt-16 max-w-7xl">
@@ -615,6 +691,15 @@
 						同步
 					</div>
 				</button>
+
+				{#if currentPlayer?.isHost}
+					<button
+						class="rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
+						onclick={handleOpenSettings}
+					>
+						设置
+					</button>
+				{/if}
 
 				<button
 					class="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
@@ -788,7 +873,7 @@
 					<div class="flex items-center justify-between">
 						<div>
 							<h2 class="text-xl font-semibold text-gray-800">
-								第 {room.currentRound}/{room.totalRounds} 回合
+								第 {room.currentRound}/{room.settings.totalRounds || room.totalRounds} 回合
 							</h2>
 							<p class="text-gray-600">
 								剩余猜测: {room.settings.maxAttempts -
@@ -839,7 +924,7 @@
 						<div class="mx-auto max-w-7xl">
 							<div class="mb-2 flex items-center justify-between">
 								<div class="text-sm font-medium text-gray-700">
-									第 {room.currentRound}/{room.totalRounds} 回合 • 剩余猜测:
+									第 {room.currentRound}/{room.settings.totalRounds || room.totalRounds} 回合 • 剩余猜测:
 									{room.settings.maxAttempts -
 										(currentPlayer && 'guesses' in currentPlayer
 											? currentPlayer.guesses.length
@@ -907,6 +992,31 @@
 					<div class="text-center">
 						<h2 class="text-xl font-semibold text-gray-800">等待游戏开始</h2>
 						<p class="mt-2 text-gray-600">所有玩家准备就绪后，房主可以开始游戏</p>
+
+						<div
+							class="mt-4 grid grid-cols-2 gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-700"
+						>
+							<div class="flex items-center justify-between">
+								<span>总回合数:</span>
+								<span class="font-medium">{room.settings.totalRounds || 5}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>每回合猜测次数:</span>
+								<span class="font-medium">{room.settings.maxAttempts}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>时间限制:</span>
+								<span class="font-medium">
+									{room.settings.timeLimit
+										? `${Math.floor(room.settings.timeLimit / 60)}分${room.settings.timeLimit % 60}秒`
+										: '无限制'}
+								</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>角色年份范围:</span>
+								<span class="font-medium">{room.settings.startYear}-{room.settings.endYear}</span>
+							</div>
+						</div>
 					</div>
 				</div>
 			{:else if room.gameState.status === 'roundEnd'}
@@ -914,7 +1024,7 @@
 					<div class="text-center">
 						<h2 class="text-xl font-semibold text-gray-800">回合结束</h2>
 						<p class="mt-2 text-gray-600">
-							当前回合: {room.currentRound}/{room.totalRounds}
+							当前回合: {room.currentRound}/{room.settings.totalRounds || room.totalRounds}
 						</p>
 
 						{#if answerCharacter}
@@ -938,7 +1048,7 @@
 
 						{#if currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
 							<div class="mt-6">
-								{#if room.currentRound < room.totalRounds}
+								{#if room.currentRound < (room.settings.totalRounds || room.totalRounds)}
 									<button
 										class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
 										onclick={startNextRound}
@@ -1007,6 +1117,31 @@
 									{/each}
 								</tbody>
 							</table>
+						</div>
+
+						<div
+							class="mx-auto mt-6 grid max-w-md grid-cols-2 gap-3 rounded-lg bg-gray-50 p-4 text-sm text-gray-700"
+						>
+							<div class="flex items-center justify-between">
+								<span>总回合数:</span>
+								<span class="font-medium">{room.settings.totalRounds || room.totalRounds}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>每回合猜测次数:</span>
+								<span class="font-medium">{room.settings.maxAttempts}</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>时间限制:</span>
+								<span class="font-medium">
+									{room.settings.timeLimit
+										? `${Math.floor(room.settings.timeLimit / 60)}分${room.settings.timeLimit % 60}秒`
+										: '无限制'}
+								</span>
+							</div>
+							<div class="flex items-center justify-between">
+								<span>角色年份范围:</span>
+								<span class="font-medium">{room.settings.startYear}-{room.settings.endYear}</span>
+							</div>
 						</div>
 
 						{#if currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
@@ -1195,4 +1330,14 @@
 
 {#if showGameEndPopup && answerCharacter}
 	<GameEndPopup result={gameResult} answer={answerCharacter} onClose={handleCloseGameEnd} />
+{/if}
+
+{#if showSettingsPopup && room}
+	<SettingsPopup
+		gameSettings={room.settings}
+		onSettingsChange={handleSettingsChange}
+		onClose={handleCloseSettings}
+		onRestart={() => {}}
+		hideRestart={room.gameState.status !== 'waiting'}
+	/>
 {/if}

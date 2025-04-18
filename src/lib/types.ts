@@ -81,6 +81,7 @@ export interface GameSettings {
 	includeGame: boolean;
 	timeLimit: number | null;
 	subjectSearch: boolean;
+	totalRounds: number;
 }
 
 export interface Subject {
