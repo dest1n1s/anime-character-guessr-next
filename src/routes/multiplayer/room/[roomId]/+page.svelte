@@ -430,7 +430,7 @@
 				// to the guesses array here
 
 				// If this is the correct answer
-				if (responseData.correct) {
+				if (responseData.isCorrect) {
 					showNotification('你猜对了！', 'ready');
 					// If the game ends with this guess, the gameEnd event will handle it
 				} else {
