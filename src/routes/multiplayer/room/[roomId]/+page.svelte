@@ -794,8 +794,19 @@
 					</div>
 				</div>
 
+				<!-- Display all players' guesses with limited info during gameplay -->
+				<div class="mb-6">
+					<AllGuessesTable
+						players={room.players}
+						currentPlayerId={data.playerId}
+						gameStatus={room.gameState.status}
+					/>
+				</div>
+
+				<!-- Display current player's guesses with detailed feedback -->
 				{#if guesses.length > 0}
-					<div class="mt-6">
+					<div class="mb-6 rounded-lg bg-white p-4 shadow-md">
+						<h3 class="mb-3 text-lg font-medium text-gray-700">你的猜测详情</h3>
 						<GuessesTable {guesses} />
 					</div>
 				{/if}
@@ -860,15 +871,19 @@
 					</div>
 				</div>
 
-				<!-- Display all players' guesses -->
+				<!-- Display all players' guesses with full details at round end -->
 				<div class="mt-6">
-					<AllGuessesTable players={room.players} currentPlayerId={data.playerId} />
+					<AllGuessesTable
+						players={room.players}
+						currentPlayerId={data.playerId}
+						gameStatus={room.gameState.status}
+					/>
 				</div>
 
 				<!-- Display current player's guesses with detailed feedback -->
 				{#if guesses.length > 0}
-					<div class="mt-6">
-						<h3 class="mb-3 text-lg font-medium text-gray-700">你的猜测详情:</h3>
+					<div class="mt-6 rounded-lg bg-white p-4 shadow-md">
+						<h3 class="mb-3 text-lg font-medium text-gray-700">你的猜测详情</h3>
 						<GuessesTable {guesses} />
 					</div>
 				{/if}
