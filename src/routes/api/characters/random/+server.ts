@@ -3,8 +3,9 @@ import type { RequestHandler } from '@sveltejs/kit';
 import axios from 'axios';
 import type { Character, GameSettings, Subject } from '$lib/types';
 import { getCache, setCache, CACHE_TIMES } from '$lib/server/redis';
+import { getCharacterDetails } from '$lib/api';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, fetch }) => {
 	const settings: GameSettings = await request.json();
 
 	// Validate settings
@@ -194,55 +195,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	const randomCharacterIndex = Math.floor(Math.random() * filteredCharacters.length);
 	const selectedCharacter = filteredCharacters[randomCharacterIndex];
 
-	// Get additional character details from cache or API
-	const characterCacheKey = `character:${selectedCharacter.id}`;
-	let characterDetail = await getCache<any>(characterCacheKey);
-
-	if (!characterDetail) {
-		// Cache miss, fetch from API
-		console.log(`Cache miss for character details: ${selectedCharacter.id}, fetching from API`);
-		try {
-			const characterDetailResponse = await axios.get(
-				`https://api.bgm.tv/v0/characters/${selectedCharacter.id}`,
-				{
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'AnimeCharacterGuessr/1.0'
-					}
-				}
-			);
-			characterDetail = characterDetailResponse.data;
-
-			// Cache the character details
-			await setCache(characterCacheKey, characterDetail, CACHE_TIMES.CHARACTER);
-		} catch (error) {
-			console.warn(`Failed to get detailed info for character ${selectedCharacter.id}:`, error);
-			// Continue with the basic character data we already have
-			characterDetail = selectedCharacter;
-		}
-	} else {
-		console.log(`Cache hit for character details: ${selectedCharacter.id}`);
-	}
-
-	// Extract tags from the character detail
-	const characterTags = characterDetail.tags?.map((tag: any) => tag.name) || [];
-
-	const nameCn =
-		characterDetail.infobox?.find((item: any) => item.key === '简体中文名')?.value ||
-		characterDetail.name;
-
-	// Format the character data
-	const character: Character = {
-		id: characterDetail.id,
-		name: characterDetail.name,
-		nameCn: nameCn,
-		icon: characterDetail.images?.grid || null,
-		image: characterDetail.images?.medium || null,
-		gender: characterDetail.gender || '?',
-		popularity: characterDetail.stat?.collects || 0,
-		summary: characterDetail.summary || '',
-		tags: characterTags
-	};
+	const character = await getCharacterDetails(selectedCharacter.id, fetch);
 
 	return json({ character });
 };
