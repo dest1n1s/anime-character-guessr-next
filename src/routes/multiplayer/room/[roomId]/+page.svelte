@@ -178,14 +178,18 @@
 			case 'roundEnd':
 				// Round ended
 				answerCharacter = event.data.answer;
+				showGameEndPopup = true;
 
 				// Determine round result based on winner
 				if (event.data.winner === data.playerId) {
+					gameResult = 'win';
 					showNotification('恭喜你猜对了！', 'ready');
 				} else if (event.data.winner) {
+					gameResult = 'lose';
 					// Someone else won the round
 					showNotification(`${event.data.playerName || '其他玩家'} 猜对了答案`, 'info');
 				} else {
+					gameResult = 'lose';
 					// No winner (all out of guesses)
 					showNotification('回合结束，没有玩家猜对答案', 'info');
 				}
@@ -200,21 +204,14 @@
 				break;
 
 			case 'gameEnd':
-				// Game ended (all rounds completed)
-				showGameEndPopup = true;
-
 				// Determine game result based on winner
 				if (event.data.winner === data.playerId) {
-					gameResult = 'win';
 					showNotification('恭喜你赢得了游戏！', 'ready');
 				} else if (event.data.winner) {
 					// Someone else won
 					const winner = room?.players.find((p) => p.id === event.data.winner);
-					gameResult = 'lose';
 					showNotification(`${winner?.name || '其他玩家'} 赢得了游戏！`, 'info');
 				} else {
-					// No winner (tie)
-					gameResult = 'lose';
 					showNotification('游戏结束，没有玩家获胜（平局）', 'info');
 				}
 				break;
@@ -540,8 +537,8 @@
 	<title>游戏房间 - {room?.name || '加载中...'} | 动漫角色猜猜乐</title>
 </svelte:head>
 
-<div class="bg-linear-to-br relative min-h-screen from-gray-100 to-gray-200 p-6">
-	<div class="absolute right-4 top-4 z-10">
+<div class="relative min-h-screen bg-linear-to-br from-gray-100 to-gray-200 p-6">
+	<div class="absolute top-4 right-4 z-10">
 		<SocialLinks onSettingsClick={() => {}} onHelpClick={() => {}} />
 	</div>
 
@@ -857,7 +854,7 @@
 								<p class="mt-2 text-sm text-red-600">{errorMessage}</p>
 							{/if}
 						{:else}
-							<p class="mt-4 italic text-gray-500">等待房主开始下一回合...</p>
+							<p class="mt-4 text-gray-500 italic">等待房主开始下一回合...</p>
 						{/if}
 					</div>
 				</div>
@@ -932,7 +929,7 @@
 								<p class="mt-2 text-sm text-red-600">{errorMessage}</p>
 							{/if}
 						{:else}
-							<p class="mt-4 italic text-gray-500">等待房主开始新的游戏...</p>
+							<p class="mt-4 text-gray-500 italic">等待房主开始新的游戏...</p>
 						{/if}
 					</div>
 				</div>
@@ -957,7 +954,7 @@
 </div>
 
 {#if notifications.length > 0}
-	<div class="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+	<div class="fixed right-4 bottom-4 z-50 flex flex-col gap-2">
 		{#each notifications as notification (notification.id)}
 			<div
 				class={`animate-fade-in-out rounded-lg px-4 py-3 text-white shadow-lg transition-all duration-500 
