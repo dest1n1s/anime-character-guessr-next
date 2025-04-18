@@ -12,6 +12,7 @@
 	import GameEndPopup from '$lib/components/GameEndPopup.svelte';
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
 	import SettingsPopup from '$lib/components/SettingsPopup.svelte';
+	import { defaultGameSettings, gameSettings } from '$lib/store';
 
 	let { data } = $props();
 
@@ -610,22 +611,66 @@
 	async function handleSettingsChange(settingKey: string, settingValue: any) {
 		if (!room) return;
 
-		const response = await fetch(`/api/multiplayer/rooms/${room.id}/settings`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				key: settingKey,
-				value: settingValue
-			})
-		});
+		try {
+			// Update local store first for responsive UI
+			if (room.settings && typeof settingKey === 'string') {
+				// Create a new settings object with the updated property
+				room.settings = {
+					...room.settings,
+					[settingKey]: settingValue
+				};
 
-		const data = await response.json();
+				// Special case for totalRounds - update both properties
+				if (settingKey === 'totalRounds') {
+					room.totalRounds = settingValue;
+				}
 
-		if (!response.ok) {
-			console.error('Settings update error:', data.error);
-			showNotification(data.error || '更新设置失败', 'error');
+				// Update the global store settings
+				gameSettings.update((currentSettings) => {
+					return {
+						...currentSettings,
+						[settingKey]: settingValue
+					};
+				});
+
+				// Save to localStorage for persistence between sessions
+				if (browser) {
+					// Get current settings from localStorage or use default
+					const storedSettings = localStorage.getItem('gameSettings');
+					const currentSettings = storedSettings ? JSON.parse(storedSettings) : defaultGameSettings;
+
+					// Update the specific setting
+					const updatedSettings = {
+						...currentSettings,
+						[settingKey]: settingValue
+					};
+
+					// Save back to localStorage
+					localStorage.setItem('gameSettings', JSON.stringify(updatedSettings));
+				}
+			}
+
+			// Then send to server
+			const response = await fetch(`/api/multiplayer/rooms/${room.id}/settings`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					key: settingKey,
+					value: settingValue
+				})
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				console.error('Settings update error:', data.error);
+				showNotification(data.error || '更新设置失败', 'error');
+			}
+		} catch (error) {
+			console.error('Error updating settings:', error);
+			showNotification('更新设置失败，请重试', 'error');
 		}
 	}
 
@@ -998,7 +1043,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<span>总回合数:</span>
-								<span class="font-medium">{room.settings.totalRounds || 5}</span>
+								<span class="font-medium">{room.settings.totalRounds || room.totalRounds}</span>
 							</div>
 							<div class="flex items-center justify-between">
 								<span>每回合猜测次数:</span>
@@ -1124,7 +1169,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<span>总回合数:</span>
-								<span class="font-medium">{room.totalRounds}</span>
+								<span class="font-medium">{room.settings.totalRounds || room.totalRounds}</span>
 							</div>
 							<div class="flex items-center justify-between">
 								<span>每回合猜测次数:</span>
@@ -1156,7 +1201,11 @@
 													method: 'POST',
 													headers: {
 														'Content-Type': 'application/json'
-													}
+													},
+													body: JSON.stringify({
+														// Pass the current settings to use for the new game
+														settings: room.settings
+													})
 												});
 
 												if (!response.ok) {

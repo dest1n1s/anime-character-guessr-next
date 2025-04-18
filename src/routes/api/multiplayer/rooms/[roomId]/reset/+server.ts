@@ -28,12 +28,18 @@ export const POST: RequestHandler = async ({ params, cookies }) => {
 			return json({ error: 'Only the host can reset the room' }, { status: 403 });
 		}
 
+		// Save the current settings before reset
+		const currentSettings = room.settings;
+
 		// Reset the room state
 		room.gameState.status = 'waiting';
 		room.gameState.roundStartTime = null;
 		room.gameState.timeRemaining = null;
 		room.currentRound = 0;
 		room.answerCharacter = null;
+
+		// Preserve the settings
+		room.settings = currentSettings;
 
 		// Reset all players
 		room.players.forEach((p) => {
