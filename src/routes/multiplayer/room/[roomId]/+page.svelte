@@ -8,6 +8,7 @@
 	import { source } from 'sveltekit-sse';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import GuessesTable from '$lib/components/GuessesTable.svelte';
+	import AllGuessesTable from '$lib/components/AllGuessesTable.svelte';
 	import GameEndPopup from '$lib/components/GameEndPopup.svelte';
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
 
@@ -859,8 +860,15 @@
 					</div>
 				</div>
 
+				<!-- Display all players' guesses -->
+				<div class="mt-6">
+					<AllGuessesTable players={room.players} currentPlayerId={data.playerId} />
+				</div>
+
+				<!-- Display current player's guesses with detailed feedback -->
 				{#if guesses.length > 0}
 					<div class="mt-6">
+						<h3 class="mb-3 text-lg font-medium text-gray-700">你的猜测详情:</h3>
 						<GuessesTable {guesses} />
 					</div>
 				{/if}
