@@ -71,6 +71,10 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 		// Need to typecast to avoid TypeScript errors
 		(room.settings as any)[key] = value;
 
+		if (key === 'totalRounds') {
+			room.totalRounds = value;
+		}
+
 		// Broadcast the updated room to all players
 		addRoomEvent(roomId, {
 			type: 'roomUpdate',

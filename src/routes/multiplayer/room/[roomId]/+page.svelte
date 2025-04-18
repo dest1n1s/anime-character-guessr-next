@@ -270,7 +270,7 @@
 
 				// If current player is host, show button to start next round
 				if (currentPlayer?.isHost) {
-					if (room && room.currentRound >= (room.settings.totalRounds || room.totalRounds)) {
+					if (room && room.currentRound >= room.totalRounds) {
 						// All rounds completed, end the game
 						endGame();
 					}
@@ -873,7 +873,7 @@
 					<div class="flex items-center justify-between">
 						<div>
 							<h2 class="text-xl font-semibold text-gray-800">
-								第 {room.currentRound}/{room.settings.totalRounds || room.totalRounds} 回合
+								第 {room.currentRound}/{room.totalRounds} 回合
 							</h2>
 							<p class="text-gray-600">
 								剩余猜测: {room.settings.maxAttempts -
@@ -924,7 +924,7 @@
 						<div class="mx-auto max-w-7xl">
 							<div class="mb-2 flex items-center justify-between">
 								<div class="text-sm font-medium text-gray-700">
-									第 {room.currentRound}/{room.settings.totalRounds || room.totalRounds} 回合 • 剩余猜测:
+									第 {room.currentRound}/{room.totalRounds} 回合 • 剩余猜测:
 									{room.settings.maxAttempts -
 										(currentPlayer && 'guesses' in currentPlayer
 											? currentPlayer.guesses.length
@@ -1024,7 +1024,7 @@
 					<div class="text-center">
 						<h2 class="text-xl font-semibold text-gray-800">回合结束</h2>
 						<p class="mt-2 text-gray-600">
-							当前回合: {room.currentRound}/{room.settings.totalRounds || room.totalRounds}
+							当前回合: {room.currentRound}/{room.totalRounds}
 						</p>
 
 						{#if answerCharacter}
@@ -1048,7 +1048,7 @@
 
 						{#if currentPlayer && 'isHost' in currentPlayer && currentPlayer.isHost}
 							<div class="mt-6">
-								{#if room.currentRound < (room.settings.totalRounds || room.totalRounds)}
+								{#if room.currentRound < room.totalRounds}
 									<button
 										class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
 										onclick={startNextRound}
@@ -1124,7 +1124,7 @@
 						>
 							<div class="flex items-center justify-between">
 								<span>总回合数:</span>
-								<span class="font-medium">{room.settings.totalRounds || room.totalRounds}</span>
+								<span class="font-medium">{room.totalRounds}</span>
 							</div>
 							<div class="flex items-center justify-between">
 								<span>每回合猜测次数:</span>
