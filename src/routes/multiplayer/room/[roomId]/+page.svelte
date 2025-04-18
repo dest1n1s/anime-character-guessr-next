@@ -35,8 +35,56 @@
 	let notificationCounter = 0;
 	let isSyncing = $state(false);
 
-	// Ref to store the beforeunload handler for proper cleanup
-	let beforeUnloadHandler: ((event: BeforeUnloadEvent) => void) | null = null;
+	// Sticky search bar state
+	let searchBarElement: HTMLElement | null = $state(null);
+	let searchBarSticky = $state(false);
+	let searchBarHeight = $state(0);
+	let searchBarOffsetTop = $state(0);
+
+	// Function to update search bar measurements
+	function updateSearchBarMeasurements() {
+		if (!searchBarElement || !browser) return;
+
+		// Get the current position of the search bar
+		const rect = searchBarElement.getBoundingClientRect();
+		searchBarOffsetTop = rect.top + window.scrollY;
+		searchBarHeight = searchBarElement.offsetHeight;
+
+		// Update sticky state based on current scroll position
+		updateSearchBarStickyState();
+	}
+
+	// Function to update the sticky state based on scroll position
+	function updateSearchBarStickyState() {
+		if (!browser) return;
+		searchBarSticky = window.scrollY > searchBarOffsetTop;
+	}
+
+	// Window event handlers
+	function handleWindowScroll() {
+		updateSearchBarStickyState();
+	}
+
+	function handleWindowResize() {
+		updateSearchBarMeasurements();
+	}
+
+	// BeforeUnload handler
+	function handleBeforeUnload(event: BeforeUnloadEvent) {
+		if (room) {
+			// Try to notify the server that the player is leaving
+			try {
+				// Use sendBeacon which is designed for this use case and works better
+				// than fetch for beforeunload events
+				navigator.sendBeacon(
+					`/api/multiplayer/rooms/${room.id}/leave`,
+					'refresh=true' // Indicate this is a refresh, not a genuine leave
+				);
+			} catch (error) {
+				console.error('Error sending leave beacon:', error);
+			}
+		}
+	}
 
 	onMount(async () => {
 		if (browser) {
@@ -50,24 +98,15 @@
 			// Connect to the SSE endpoint using sveltekit-sse
 			connectToEventSource();
 
-			// Add a beforeunload listener to handle browser close events
-			beforeUnloadHandler = (event: BeforeUnloadEvent) => {
-				if (room) {
-					// Try to notify the server that the player is leaving
-					try {
-						// Use sendBeacon which is designed for this use case and works better
-						// than fetch for beforeunload events
-						navigator.sendBeacon(
-							`/api/multiplayer/rooms/${room.id}/leave`,
-							'refresh=true' // Indicate this is a refresh, not a genuine leave
-						);
-					} catch (error) {
-						console.error('Error sending leave beacon:', error);
-					}
-				}
-			};
+			// Initial setup with a small delay to ensure DOM is fully rendered
+			setTimeout(updateSearchBarMeasurements, 500);
 
-			window.addEventListener('beforeunload', beforeUnloadHandler);
+			// Also update measurements when room data changes
+			$effect(() => {
+				if (room) {
+					setTimeout(updateSearchBarMeasurements, 300);
+				}
+			});
 		}
 	});
 
@@ -75,12 +114,6 @@
 		// Close the SSE connection
 		if (connection) {
 			connection.close();
-		}
-
-		// Remove the beforeunload listener if it exists
-		if (browser && window && beforeUnloadHandler) {
-			window.removeEventListener('beforeunload', beforeUnloadHandler);
-			beforeUnloadHandler = null;
 		}
 	});
 
@@ -771,7 +804,7 @@
 						{/if}
 					</div>
 
-					<div class="mt-6">
+					<div class="mt-6" bind:this={searchBarElement}>
 						<SearchBar
 							onCharacterSelect={handleCharacterSelect}
 							{isGuessing}
@@ -793,6 +826,65 @@
 						{/if}
 					</div>
 				</div>
+
+				<!-- Sticky search bar that appears when scrolling -->
+				{#if searchBarSticky}
+					<div
+						class="fixed top-0 right-0 left-0 z-50 bg-white px-4 py-3 shadow-lg transition-all duration-300"
+						style="transform: translateY({searchBarSticky
+							? '0'
+							: '-100%'}); opacity: {searchBarSticky ? '1' : '0'};"
+						transition:fade={{ duration: 200 }}
+					>
+						<div class="mx-auto max-w-7xl">
+							<div class="mb-2 flex items-center justify-between">
+								<div class="text-sm font-medium text-gray-700">
+									第 {room.currentRound}/{room.totalRounds} 回合 • 剩余猜测:
+									{room.settings.maxAttempts -
+										(currentPlayer && 'guesses' in currentPlayer
+											? currentPlayer.guesses.length
+											: 0)} /
+									{room.settings.maxAttempts}
+								</div>
+
+								{#if roundTimeLeft > 0}
+									<div class="rounded-full bg-blue-100 px-2 py-1 text-sm font-bold text-blue-800">
+										{Math.floor(roundTimeLeft / 60)}:{(roundTimeLeft % 60)
+											.toString()
+											.padStart(2, '0')}
+									</div>
+								{/if}
+							</div>
+
+							<div class="flex items-center gap-3">
+								<div class="flex-grow">
+									<SearchBar
+										onCharacterSelect={handleCharacterSelect}
+										{isGuessing}
+										gameEnd={room.gameState.status !== 'playing' ||
+											(currentPlayer && 'guesses' in currentPlayer
+												? currentPlayer.guesses.length
+												: 0) >= room.settings.maxAttempts}
+										subjectSearch={true}
+									/>
+								</div>
+
+								{#if room.gameState.status === 'playing' && currentPlayer && 'guesses' in currentPlayer && currentPlayer.guesses.length < room.settings.maxAttempts}
+									<div class="flex-shrink-0">
+										<button
+											class="rounded-lg bg-red-600 px-3 py-2 text-sm text-white transition-colors hover:bg-red-700"
+											onclick={handleGiveUp}
+										>
+											放弃本回合
+										</button>
+									</div>
+								{/if}
+							</div>
+						</div>
+					</div>
+					<!-- Add a spacer to prevent content jump when the bar becomes fixed -->
+					<div style="height: {searchBarHeight}px;"></div>
+				{/if}
 
 				<!-- Display all players' guesses with limited info during gameplay -->
 				<div class="mb-6">
@@ -975,6 +1067,12 @@
 		{/if}
 	</div>
 </div>
+
+<svelte:window
+	on:scroll={handleWindowScroll}
+	on:resize={handleWindowResize}
+	on:beforeunload={handleBeforeUnload}
+/>
 
 {#if notifications.length > 0}
 	<div class="fixed right-4 bottom-4 z-50 flex flex-col gap-2">
