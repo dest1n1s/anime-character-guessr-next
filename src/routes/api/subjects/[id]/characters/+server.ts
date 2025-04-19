@@ -33,8 +33,11 @@ export const GET: RequestHandler = async ({ params }) => {
 			}
 		});
 
+		const order = (a: any) => (a.relation === '主角' ? 0 : 1);
+
 		// Map the response to our format
 		const characters: SearchResult[] = response.data
+			.sort((a: any, b: any) => order(a) - order(b))
 			.map((character: any) => {
 				return {
 					id: character.id,
@@ -43,7 +46,8 @@ export const GET: RequestHandler = async ({ params }) => {
 						character.infobox?.find((item: any) => item.key === '简体中文名')?.value ||
 						character.name,
 					icon: character.images?.grid || null,
-					image: character.images?.medium || null
+					image: character.images?.medium || null,
+					relation: character.relation
 				};
 			})
 			.filter((character: SearchResult) => character.name && character.id); // Filter out incomplete characters
