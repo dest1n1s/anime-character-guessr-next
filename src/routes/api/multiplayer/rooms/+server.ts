@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { rooms } from '$lib/server/gameStore';
+import { rooms, removePlayerFromAllRooms } from '$lib/server/gameStore';
 import { generateRoomId, generateRoomName } from '$lib/server/utils';
 import type { Room } from '$lib/types';
 
@@ -54,6 +54,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 
 		// Generate a unique room ID
 		const roomId = generateRoomId();
+
+		// Remove player from all rooms
+		removePlayerFromAllRooms(hostId);
 
 		// Create a new room
 		const newRoom: Room = {

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from '@sveltejs/kit';
-import { rooms, addRoomEvent } from '$lib/server/gameStore';
+import { rooms, addRoomEvent, removePlayerFromAllRooms } from '$lib/server/gameStore';
 import { isValidRoomId, generatePlayerName } from '$lib/server/utils';
 
 export const POST: RequestHandler = async ({ params, request, cookies }) => {
@@ -46,6 +46,8 @@ export const POST: RequestHandler = async ({ params, request, cookies }) => {
 				: generatePlayerName();
 
 		if (!room.players.find((p) => p.id === playerId)) {
+			removePlayerFromAllRooms(playerId);
+
 			// Add the player to the room
 			room.players.push({
 				id: playerId,

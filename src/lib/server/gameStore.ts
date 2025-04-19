@@ -99,6 +99,17 @@ export function removePlayerFromRoom(roomId: string, playerId: string) {
 	});
 }
 
+/**
+ * Remove a player from all rooms
+ */
+export function removePlayerFromAllRooms(playerId: string) {
+	for (const [roomId, room] of rooms.entries()) {
+		if (room.players.some((p) => p.id === playerId)) {
+			removePlayerFromRoom(roomId, playerId);
+		}
+	}
+}
+
 // Clean up inactive rooms every hour
 const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
 const MAX_ROOM_AGE = 3 * 60 * 60 * 1000; // 3 hours
