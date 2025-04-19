@@ -90,8 +90,9 @@
 	}
 
 	function getPlayerDisplayName(player?: Player): string {
-		if ($gameSettings.streamerMode && player?.id !== data.playerId) {
-			const index = room?.players.findIndex((p) => p.id === player?.id);
+		const id = player?.id;
+		if ($gameSettings.streamerMode && id !== data.playerId) {
+			const index = room?.players.findIndex((p) => p.id === id);
 			if (index !== undefined) {
 				return `玩家 ${index + 1}`;
 			} else {
@@ -273,8 +274,9 @@
 					showNotification('恭喜你猜对了！', 'ready');
 				} else if (event.data.winner) {
 					gameResult = 'lose';
+					const winner = room?.players.find((p) => p.id === event.data.winner);
 					// Someone else won the round
-					showNotification(`${event.data.playerName || '其他玩家'} 猜对了答案`, 'info');
+					showNotification(`${getPlayerDisplayName(winner)} 猜对了答案`, 'info');
 				} else {
 					gameResult = 'lose';
 					// No winner (all out of guesses)
@@ -311,10 +313,8 @@
 						event.data.guessesRemaining !== undefined
 							? `，剩余 ${event.data.guessesRemaining} 次猜测机会`
 							: '';
-					showNotification(
-						`${getPlayerDisplayName(event.data.player)} 进行了猜测${remainingText}`,
-						'info'
-					);
+					const player = room?.players.find((p) => p.id === event.data.playerId);
+					showNotification(`${getPlayerDisplayName(player)} 进行了猜测${remainingText}`, 'info');
 				} else {
 					// This is our own guess, update our local guesses
 					guesses = [...guesses, event.data.guess];
