@@ -166,18 +166,17 @@
 	}
 </script>
 
-<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+<div
+	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+	onclick={(e) => e.target === e.currentTarget && onClose()}
+	onkeydown={(e) => e.key === 'Escape' && onClose()}
+	role="dialog"
+	aria-modal="true"
+	tabindex="-1"
+>
 	<div
 		class="relative max-h-[90vh] w-[95vw] max-w-4xl overflow-auto rounded-lg bg-white p-6 shadow-xl"
 	>
-		<button
-			class="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
-			onclick={onClose}
-			aria-label="关闭"
-		>
-			×
-		</button>
-
 		<div class="mb-4 border-b border-gray-200 pb-2">
 			<h2 class="text-2xl font-bold text-gray-800">游戏设置</h2>
 			{#if hideRestart}
@@ -382,7 +381,7 @@
 							/>
 							<button
 								class="bg-primary-600 hover:bg-primary-700 rounded-md px-3 py-2 text-sm text-white"
-								onclick={handleSearch}
+								on:click={handleSearch}
 								disabled={!searchQuery.trim() || isSearching}
 							>
 								{isSearching ? '搜索中...' : '搜索'}
@@ -394,7 +393,7 @@
 								{#each searchResults as subject}
 									<button
 										class="flex cursor-pointer items-center justify-between border-b border-gray-100 p-2 hover:bg-gray-50"
-										onclick={() => handleAddSubject(subject)}
+										on:click={() => handleAddSubject(subject)}
 									>
 										<div>
 											<div class="font-medium">{subject.name}</div>
@@ -418,7 +417,7 @@
 											</div>
 											<button
 												class="rounded-full bg-red-100 p-1 text-red-600 hover:bg-red-200"
-												onclick={() => handleRemoveSubject(subject.id)}
+												on:click={() => handleRemoveSubject(subject.id)}
 												aria-label="移除"
 											>
 												<svg
@@ -447,14 +446,14 @@
 		<div class="mt-6 flex justify-end gap-3">
 			{#if !hideRestart}
 				<button
-					class="rounded-md bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
+					class="cursor-pointer rounded-md bg-blue-600 px-6 py-2 text-white hover:bg-blue-700"
 					onclick={onRestart}
 				>
 					应用并重新开始
 				</button>
 			{/if}
 			<button
-				class="rounded-md border border-gray-300 px-6 py-2 text-gray-700 hover:bg-gray-50"
+				class="cursor-pointer rounded-md border border-gray-300 px-6 py-2 text-gray-700 hover:bg-gray-50"
 				onclick={onClose}
 			>
 				关闭
@@ -465,19 +464,26 @@
 
 <!-- Confirmation dialog for setting changes in active games -->
 {#if showConfirmation}
-	<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60">
+	<div
+		class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60"
+		onclick={(e) => e.target === e.currentTarget && cancelSettingChange()}
+		onkeydown={(e) => e.key === 'Escape' && cancelSettingChange()}
+		role="dialog"
+		aria-modal="true"
+		tabindex="-1"
+	>
 		<div class="w-[95vw] max-w-md rounded-lg bg-white p-6 shadow-xl">
 			<h3 class="text-lg font-semibold text-gray-800">确认更改设置</h3>
 			<p class="mt-2 text-gray-600">你确定要更改这个设置吗？更改将在当前回合结束后生效。</p>
 			<div class="mt-4 flex justify-end gap-3">
 				<button
-					class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+					class="cursor-pointer rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
 					onclick={cancelSettingChange}
 				>
 					取消
 				</button>
 				<button
-					class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+					class="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 					onclick={settingToChange?.key === 'preset'
 						? () => applyPresetSettings(settingToChange?.value)
 						: confirmSettingChange}

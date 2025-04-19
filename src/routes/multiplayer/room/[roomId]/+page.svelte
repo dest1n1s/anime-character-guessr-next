@@ -781,7 +781,7 @@
 
 			<div class="flex items-center gap-3">
 				<button
-					class="rounded-lg bg-blue-500 px-3 py-2 text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+					class="cursor-pointer rounded-lg bg-blue-500 px-3 py-2 text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
 					onclick={handleSyncRoom}
 					disabled={isSyncing}
 				>
@@ -814,13 +814,13 @@
 
 				{#if currentPlayer?.isHost}
 					<button
-						class="rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
+						class="cursor-pointer rounded-lg bg-indigo-600 px-4 py-2 text-white transition-colors hover:bg-indigo-700"
 						onclick={handleOpenSettings}
 					>
 						设置
 					</button>
 					<button
-						class="rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
+						class="cursor-pointer rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
 						onclick={handleOpenRoomInfo}
 					>
 						房间信息
@@ -828,7 +828,7 @@
 				{/if}
 
 				<button
-					class="rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
+					class="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
 					onclick={handleLeaveRoom}
 				>
 					离开房间

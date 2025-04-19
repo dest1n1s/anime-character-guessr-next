@@ -196,14 +196,17 @@
 									bind:checked={isPrivateRoom}
 									id="isPrivateRoom"
 									type="checkbox"
-									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+									class="cursor-pointer rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500"
 								/>
-								<label for="isPrivateRoom" class="ml-2 block text-sm text-gray-700">
+								<label
+									for="isPrivateRoom"
+									class="ml-2 block cursor-pointer text-sm text-gray-700 select-none"
+								>
 									创建私密房间
 								</label>
 							</div>
 							<button
-								class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+								class="w-full cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 								onclick={createRoom}
 								disabled={isCreatingRoom || isJoiningRoom}
 							>

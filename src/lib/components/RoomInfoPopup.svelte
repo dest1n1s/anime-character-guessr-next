@@ -1,12 +1,9 @@
 <script lang="ts">
-	export let roomName = '';
-	export let isPrivate = false;
-	export let onClose = () => {};
-	export let onSave = (name: string, isPrivate: boolean) => {};
+	let { roomName, isPrivate, onClose, onSave } = $props();
 
-	let name = roomName;
-	let roomPrivate = isPrivate;
-	let errorMessage = '';
+	let name = $state(roomName);
+	let roomPrivate = $state(isPrivate);
+	let errorMessage = $state('');
 
 	function handleSave() {
 		if (!name.trim()) {
@@ -26,7 +23,11 @@
 
 <div
 	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-	on:click|self={onClose}
+	onclick={(e) => e.target === e.currentTarget && onClose()}
+	onkeydown={(e) => e.key === 'Escape' && onClose()}
+	role="dialog"
+	aria-modal="true"
+	tabindex="-1"
 >
 	<div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
 		<h2 class="mb-4 text-xl font-semibold text-gray-800">房间设置</h2>
@@ -63,14 +64,14 @@
 
 		<div class="flex justify-end gap-2">
 			<button
-				class="rounded-lg bg-gray-100 px-4 py-2 text-gray-800 transition-colors hover:bg-gray-200"
-				on:click={onClose}
+				class="cursor-pointer rounded-lg bg-gray-100 px-4 py-2 text-gray-800 transition-colors hover:bg-gray-200"
+				onclick={onClose}
 			>
 				取消
 			</button>
 			<button
-				class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-				on:click={handleSave}
+				class="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+				onclick={handleSave}
 			>
 				保存
 			</button>
