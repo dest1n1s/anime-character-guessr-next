@@ -6,7 +6,7 @@ A fun game where you guess anime characters with increasing hints. Built with Sv
 
 - Inspired by [BLAST.tv](https://blast.tv/counter-strikle)
 - Refactored from [kennylimz/anime-character-guessr](https://github.com/kennylimz/anime-character-guessr)
-- Data source: [Bangumi](https://bgm.tv/)
+- Data source: [Bangumi](https://bgm.tv/), [Moegirlpedia](https://zh.moegirl.org.cn/) (Scraped by [Zzzzzzyt/moegirl-dataset](https://github.com/Zzzzzzyt/moegirl-dataset))
 
 ## Features
 
@@ -98,7 +98,7 @@ docker run -p 3000:3000 --env-file .env anime-character-guessr
 
 ## Data Source
 
-Data is sourced from [Bangumi](https://bgm.tv/) API.
+Data is sourced from [Bangumi](https://bgm.tv/) API and [Moegirlpedia](https://zh.moegirl.org.cn/).
 
 ## License
 
