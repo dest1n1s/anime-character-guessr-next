@@ -122,6 +122,7 @@ export interface Room {
 	id: string;
 	name: string;
 	host: string;
+	private: boolean;
 	players: Player[];
 	gameState: GameState;
 	settings: GameSettings;

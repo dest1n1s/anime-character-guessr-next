@@ -17,6 +17,8 @@
 	let roomId = $state('');
 	let errorMessage = $state('');
 	let rooms: { id: string; name: string; playerCount: number; status: string }[] = $state([]);
+	let customRoomName = $state('');
+	let isPrivateRoom = $state(false);
 
 	onMount(() => {
 		// Check local storage for existing game session
@@ -80,7 +82,9 @@
 				},
 				body: JSON.stringify({
 					hostName: playerName.trim(),
-					settings: $gameSettings
+					settings: $gameSettings,
+					roomName: customRoomName.trim() || undefined,
+					isPrivate: isPrivateRoom
 				})
 			});
 
@@ -150,8 +154,8 @@
 	<title>多人游戏 | 动漫角色猜猜乐</title>
 </svelte:head>
 
-<div class="bg-linear-to-br relative min-h-screen from-gray-100 to-gray-200 p-6">
-	<div class="absolute right-4 top-4 z-10">
+<div class="relative min-h-screen bg-linear-to-br from-gray-100 to-gray-200 p-6">
+	<div class="absolute top-4 right-4 z-10">
 		<SocialLinks
 			onSettingsClick={() => (showSettingsPopup = true)}
 			onHelpClick={() => (showHelpPopup = true)}
@@ -164,54 +168,76 @@
 		<div class="mb-8 space-y-2">
 			<div class="rounded-lg bg-white p-6 shadow-md">
 				<h2 class="mb-4 text-xl font-semibold text-gray-800">输入你的昵称</h2>
-				<div class="mb-4">
-					<input
-						type="text"
-						bind:value={playerName}
-						placeholder="昵称（最多20字符）"
-						maxlength="20"
-						class="focus:border-primary-500 focus:outline-hidden focus:ring-primary-500/20 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2"
-					/>
-				</div>
-
-				<div class="mb-6 grid gap-x-8 gap-y-4 md:grid-cols-2">
-					<div>
-						<h3 class="mb-2 text-lg font-medium text-gray-700">创建新房间</h3>
-						<button
-							class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-							onclick={createRoom}
-							disabled={isCreatingRoom || isJoiningRoom}
-						>
-							{isCreatingRoom ? '创建中...' : '创建房间'}
-						</button>
+				<div class="mt-6 flex flex-col gap-6">
+					<div class="mb-4">
+						<input
+							type="text"
+							bind:value={playerName}
+							placeholder="昵称（最多20字符）"
+							maxlength="20"
+							class="focus:border-primary-500 focus:ring-primary-500/20 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:outline-hidden"
+						/>
 					</div>
 
-					<div>
-						<h3 class="mb-2 text-lg font-medium text-gray-700">加入房间</h3>
-						<div class="flex flex-col gap-2">
-							<input
-								type="text"
-								bind:value={roomId}
-								placeholder="房间ID（6位）"
-								maxlength="6"
-								class="focus:border-primary-500 focus:outline-hidden focus:ring-primary-500/20 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2"
-							/>
+					<div class="mb-6 grid gap-x-8 gap-y-4 md:grid-cols-2">
+						<div>
+							<h3 class="mb-2 text-lg font-medium text-gray-700">创建新房间</h3>
+							<div class="mb-3">
+								<input
+									type="text"
+									bind:value={customRoomName}
+									placeholder="自定义房间名称（可选）"
+									maxlength="50"
+									class="focus:border-primary-500 focus:ring-primary-500/20 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:outline-hidden"
+								/>
+							</div>
+							<div class="mb-3 flex items-center">
+								<input
+									bind:checked={isPrivateRoom}
+									id="isPrivateRoom"
+									type="checkbox"
+									class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								/>
+								<label for="isPrivateRoom" class="ml-2 block text-sm text-gray-700">
+									创建私密房间
+								</label>
+							</div>
 							<button
-								class="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-								onclick={joinRoom}
+								class="w-full rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+								onclick={createRoom}
 								disabled={isCreatingRoom || isJoiningRoom}
 							>
-								{isJoiningRoom ? '加入中...' : '加入'}
+								{isCreatingRoom ? '创建中...' : '创建房间'}
 							</button>
 						</div>
-					</div>
-				</div>
 
-				{#if errorMessage}
-					<div class="mt-4 rounded-lg bg-red-50 p-3 text-red-700">
-						{errorMessage}
+						<div>
+							<h3 class="mb-2 text-lg font-medium text-gray-700">加入房间</h3>
+							<div class="flex flex-col gap-2">
+								<input
+									type="text"
+									bind:value={roomId}
+									placeholder="房间ID（6位）"
+									maxlength="6"
+									class="focus:border-primary-500 focus:ring-primary-500/20 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:outline-hidden"
+								/>
+								<button
+									class="cursor-pointer rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+									onclick={joinRoom}
+									disabled={isCreatingRoom || isJoiningRoom}
+								>
+									{isJoiningRoom ? '加入中...' : '加入'}
+								</button>
+							</div>
+						</div>
 					</div>
-				{/if}
+
+					{#if errorMessage}
+						<div class="mt-4 rounded-lg bg-red-50 p-3 text-red-700">
+							{errorMessage}
+						</div>
+					{/if}
+				</div>
 			</div>
 		</div>
 

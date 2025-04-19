@@ -7,14 +7,17 @@ import type { Room } from '$lib/types';
 // Get all rooms
 export const GET: RequestHandler = async () => {
 	// Return a simplified list of rooms (without sensitive data)
-	const roomList = Array.from(rooms.values()).map((room: Room) => ({
-		id: room.id,
-		name: room.name,
-		playerCount: room.players.length,
-		status: room.gameState.status,
-		currentRound: room.currentRound,
-		totalRounds: room.totalRounds
-	}));
+	// Filter out private rooms
+	const roomList = Array.from(rooms.values())
+		.filter((room: Room) => !room.private)
+		.map((room: Room) => ({
+			id: room.id,
+			name: room.name,
+			playerCount: room.players.length,
+			status: room.gameState.status,
+			currentRound: room.currentRound,
+			totalRounds: room.totalRounds
+		}));
 
 	return json({ rooms: roomList });
 };
@@ -22,10 +25,20 @@ export const GET: RequestHandler = async () => {
 // Create a new room
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
-		const { hostName, settings } = await request.json();
+		const { hostName, settings, roomName, isPrivate } = await request.json();
 
 		if (!hostName || typeof hostName !== 'string') {
 			return json({ error: 'Invalid host name' }, { status: 400 });
+		}
+
+		// Validate roomName if provided
+		if (roomName !== undefined && (typeof roomName !== 'string' || roomName.trim() === '')) {
+			return json({ error: 'Invalid room name' }, { status: 400 });
+		}
+
+		// Validate isPrivate if provided
+		if (isPrivate !== undefined && typeof isPrivate !== 'boolean') {
+			return json({ error: 'Invalid private flag' }, { status: 400 });
 		}
 
 		if (!cookies.get('playerId')) {
@@ -45,8 +58,9 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		// Create a new room
 		const newRoom: Room = {
 			id: roomId,
-			name: generateRoomName(),
+			name: roomName?.trim() || generateRoomName(),
 			host: hostId,
+			private: isPrivate === true,
 			players: [
 				{
 					id: hostId,

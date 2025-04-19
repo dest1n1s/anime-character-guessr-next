@@ -12,6 +12,7 @@
 	import GameEndPopup from '$lib/components/GameEndPopup.svelte';
 	import SocialLinks from '$lib/components/SocialLinks.svelte';
 	import SettingsPopup from '$lib/components/SettingsPopup.svelte';
+	import RoomInfoPopup from '$lib/components/RoomInfoPopup.svelte';
 	import { defaultGameSettings, gameSettings } from '$lib/store';
 
 	let { data } = $props();
@@ -30,6 +31,7 @@
 	let roundTimeLeft = $state(0);
 	let errorMessage = $state('');
 	let showSettingsPopup = $state(false);
+	let showRoomInfoPopup = $state(false);
 	let notifications: {
 		message: string;
 		id: number;
@@ -698,6 +700,64 @@
 	function handleCloseSettings() {
 		showSettingsPopup = false;
 	}
+
+	// Handle room info button click
+	function handleOpenRoomInfo() {
+		showRoomInfoPopup = true;
+	}
+
+	// Handle closing room info popup
+	function handleCloseRoomInfo() {
+		showRoomInfoPopup = false;
+	}
+
+	// Function to handle room info changes
+	async function handleRoomInfoChange(name: string, isPrivate: boolean) {
+		if (!room) return;
+
+		try {
+			// Update local state first for responsive UI
+			const oldName = room.name;
+			const oldPrivate = room.private;
+
+			// Only send request if values actually changed
+			if (name === oldName && isPrivate === oldPrivate) {
+				return;
+			}
+
+			// Update locally first
+			room.name = name;
+			room.private = isPrivate;
+
+			// Send to server
+			const response = await fetch(`/api/multiplayer/rooms/${room.id}/info`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					name,
+					isPrivate
+				})
+			});
+
+			const data = await response.json();
+
+			if (!response.ok) {
+				// Revert changes on error
+				room.name = oldName;
+				room.private = oldPrivate;
+
+				console.error('Room info update error:', data.error);
+				showNotification(data.error || '更新房间信息失败', 'error');
+			} else {
+				showNotification('房间信息已更新', 'info');
+			}
+		} catch (error) {
+			console.error('Error updating room info:', error);
+			showNotification('更新房间信息失败，请重试', 'error');
+		}
+	}
 </script>
 
 <svelte:head>
@@ -758,6 +818,12 @@
 						onclick={handleOpenSettings}
 					>
 						设置
+					</button>
+					<button
+						class="rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700"
+						onclick={handleOpenRoomInfo}
+					>
+						房间信息
 					</button>
 				{/if}
 
@@ -1407,5 +1473,14 @@
 		onClose={handleCloseSettings}
 		onRestart={() => {}}
 		hideRestart={room.gameState.status !== 'waiting'}
+	/>
+{/if}
+
+{#if showRoomInfoPopup && room}
+	<RoomInfoPopup
+		roomName={room.name}
+		isPrivate={room.private}
+		onClose={handleCloseRoomInfo}
+		onSave={handleRoomInfoChange}
 	/>
 {/if}
