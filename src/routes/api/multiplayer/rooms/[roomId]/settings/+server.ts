@@ -60,7 +60,8 @@ export const POST: RequestHandler = async ({ params, cookies, request }) => {
 			'includeGame',
 			'timeLimit',
 			'subjectSearch',
-			'totalRounds'
+			'totalRounds',
+			'streamerMode'
 		];
 
 		if (!allowedSettings.includes(key)) {

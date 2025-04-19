@@ -5,11 +5,13 @@
 	let {
 		players = [],
 		currentPlayerId = '',
-		gameStatus = 'playing'
+		gameStatus = 'playing',
+		getDisplayName = (player: Player) => player.name
 	}: {
 		players: Player[];
 		currentPlayerId: string;
 		gameStatus: 'playing' | 'roundEnd' | 'waiting' | 'gameEnd';
+		getDisplayName: (player: Player) => string;
 	} = $props();
 
 	// Sort players by score in descending order
@@ -98,7 +100,7 @@
 					<tr class={player.id === currentPlayerId ? 'bg-blue-50' : ''}>
 						<td class="border-b border-gray-100 p-3 pl-4 align-top">
 							<div class="font-medium">
-								{player.name}
+								{getDisplayName(player)}
 								{#if player.isHost}
 									<span class="ml-1 text-xs text-blue-600">(房主)</span>
 								{/if}

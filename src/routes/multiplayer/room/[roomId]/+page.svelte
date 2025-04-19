@@ -89,6 +89,18 @@
 		}
 	}
 
+	function getPlayerDisplayName(player?: Player): string {
+		if ($gameSettings.streamerMode && player?.id !== data.playerId) {
+			const index = room?.players.findIndex((p) => p.id === player?.id);
+			if (index !== undefined) {
+				return `玩家 ${index + 1}`;
+			} else {
+				return '未知玩家';
+			}
+		}
+		return player?.name || '未知玩家';
+	}
+
 	onMount(async () => {
 		if (browser) {
 			console.log('playerId', data.playerId);
@@ -285,7 +297,7 @@
 				} else if (event.data.winner) {
 					// Someone else won
 					const winner = room?.players.find((p) => p.id === event.data.winner);
-					showNotification(`${winner?.name || '其他玩家'} 赢得了游戏！`, 'info');
+					showNotification(`${getPlayerDisplayName(winner)} 赢得了游戏！`, 'info');
 				} else {
 					showNotification('游戏结束，没有玩家获胜（平局）', 'info');
 				}
@@ -299,7 +311,10 @@
 						event.data.guessesRemaining !== undefined
 							? `，剩余 ${event.data.guessesRemaining} 次猜测机会`
 							: '';
-					showNotification(`${event.data.playerName} 进行了猜测${remainingText}`, 'info');
+					showNotification(
+						`${getPlayerDisplayName(event.data.player)} 进行了猜测${remainingText}`,
+						'info'
+					);
 				} else {
 					// This is our own guess, update our local guesses
 					guesses = [...guesses, event.data.guess];
@@ -314,7 +329,7 @@
 						room.players = [...room.players, event.data.player];
 
 						// Show notification
-						showNotification(`${event.data.player.name} 加入了房间`, 'join');
+						showNotification(`${getPlayerDisplayName(event.data.player)} 加入了房间`, 'join');
 					}
 				}
 				break;
@@ -328,7 +343,7 @@
 
 						// Show notification only if it's not the current player
 						if (player.id !== data.playerId) {
-							showNotification(`${player.name} 已准备`, 'ready');
+							showNotification(`${getPlayerDisplayName(player)} 已准备`, 'ready');
 						}
 					}
 				}
@@ -343,7 +358,7 @@
 
 						// Show notification only if it's not the current player
 						if (player.id !== data.playerId) {
-							showNotification(`${player.name} 取消准备`, 'unready');
+							showNotification(`${getPlayerDisplayName(player)} 取消准备`, 'unready');
 						}
 					}
 				}
@@ -355,7 +370,7 @@
 					// Find and remove the player from our list
 					const playerIndex = room.players.findIndex((p) => p.id === event.data.playerId);
 					if (playerIndex !== -1) {
-						const playerName = room.players[playerIndex].name;
+						const playerName = getPlayerDisplayName(room.players[playerIndex]);
 						room.players = room.players.filter((p) => p.id !== event.data.playerId);
 
 						// Show notification
@@ -771,11 +786,11 @@
 								: 'bg-gray-50'} p-3"
 						>
 							<div class="flex items-center justify-between">
-								<span class="font-medium text-gray-800">{player.name}</span>
+								<span class="font-medium text-gray-800">{getPlayerDisplayName(player)}</span>
 								{#if player.isHost}
-									<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700"
-										>房主</span
-									>
+									<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+										房主
+									</span>
 								{/if}
 							</div>
 
@@ -1022,6 +1037,7 @@
 						players={room.players}
 						currentPlayerId={data.playerId}
 						gameStatus={room.gameState.status}
+						getDisplayName={getPlayerDisplayName}
 					/>
 				</div>
 
@@ -1124,6 +1140,7 @@
 						players={room.players}
 						currentPlayerId={data.playerId}
 						gameStatus={room.gameState.status}
+						getDisplayName={getPlayerDisplayName}
 					/>
 				</div>
 
@@ -1152,7 +1169,9 @@
 									{#each [...room.players].sort((a, b) => b.score - a.score) as player}
 										<tr class={player.id === data.playerId ? 'bg-blue-50' : ''}>
 											<td class="border-b p-2">
-												<span class="font-medium">{player.name}</span>
+												<span class="font-medium">
+													{getPlayerDisplayName(player)}
+												</span>
 												{#if room.host === player.id}
 													<span class="ml-2 text-xs text-blue-600">(房主)</span>
 												{/if}

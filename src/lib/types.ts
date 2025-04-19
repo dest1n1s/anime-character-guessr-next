@@ -82,6 +82,7 @@ export interface GameSettings {
 	timeLimit: number | null;
 	subjectSearch: boolean;
 	totalRounds: number;
+	streamerMode: boolean;
 }
 
 export interface Subject {

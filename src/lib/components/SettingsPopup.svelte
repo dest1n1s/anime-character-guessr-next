@@ -345,16 +345,18 @@
 						/>
 					</div>
 
-					<!-- <div class="flex items-center">
+					<div class="flex items-center">
 						<input
 							type="checkbox"
-							id="enableHints"
-							checked={gameSettings.enableHints}
-							onchange={(e) => handleBooleanChange('enableHints', e)}
+							id="streamerMode"
+							checked={gameSettings.streamerMode}
+							onchange={(e) => handleBooleanChange('streamerMode', e)}
 							class="text-primary-600 focus:ring-primary-500 mr-2 h-4 w-4 rounded-sm border-gray-300"
 						/>
-						<label for="enableHints" class="text-sm font-medium text-gray-700">启用提示</label>
-					</div> -->
+						<label for="streamerMode" class="text-sm font-medium text-gray-700">
+							主播模式 (隐藏其他玩家名称)
+						</label>
+					</div>
 
 					<!-- <div class="flex items-center">
 						<input

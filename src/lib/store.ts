@@ -17,7 +17,8 @@ export const defaultGameSettings: GameSettings = {
 	includeGame: false,
 	timeLimit: null,
 	subjectSearch: true,
-	totalRounds: 5
+	totalRounds: 5,
+	streamerMode: false
 };
 
 // Game settings store
