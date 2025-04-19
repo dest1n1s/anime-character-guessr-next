@@ -12,21 +12,30 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_URL=redis://redis:6379
-      - USE_REDIS_IN_DEV=true
+      - MONGODB_URI=mongodb://mongo:27017
+
     depends_on:
       - redis
+      - mongo
     networks:
       - app-network
 
   redis:
     image: redis:alpine
     container_name: anime-guessr-redis
-    ports:
-      - '6379:6379'
     command: redis-server --appendonly yes
     restart: unless-stopped
     volumes:
       - redis-data:/data
+    networks:
+      - app-network
+
+  mongo:
+    image: mongo:latest
+    container_name: anime-guessr-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
     networks:
       - app-network
 

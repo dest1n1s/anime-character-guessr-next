@@ -18,11 +18,18 @@ A fun game where you guess anime characters with increasing hints. Built with Sv
 
 ## Development
 
-This project uses [Bun](https://bun.sh/) for faster performance and improved developer experience.
+This project uses [Bun](https://bun.sh/) for faster performance and improved developer experience. Also, it relies on the following services:
+
+- **Redis**: For caching API data from Bangumi
+- **MongoDB**: For storing additional data
+
+You can run these services locally using Docker Compose.
 
 ### Prerequisites
 
 - Install Bun: `curl -fsSL https://bun.sh/install | bash`
+- Install Docker & Docker Compose. You may refer to the [official documentation](https://docs.docker.com/get-docker/) for help.
+- Or, you can directly install [Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/) and [MongoDB](https://www.mongodb.com/docs/manual/installation/) on your machine.
 
 ### Setup
 
@@ -36,8 +43,8 @@ bun install
 # Start development server
 bun run dev
 
-# Optional: Run Redis server
-docker compose up -d redis
+# Optional: Run Redis and MongoDB servers
+docker compose up -d redis mongo
 ```
 
 ### Building for production
@@ -49,8 +56,8 @@ bun run build
 # Preview the built app
 bun run preview
 
-# Optional: Run Redis server
-docker compose up -d redis
+# Optional: Run Redis and MongoDB servers
+docker compose up -d redis mongo
 ```
 
 ## Docker Deployment
@@ -82,11 +89,12 @@ docker run -p 3000:3000 --env-file .env anime-character-guessr
 
 ### Environment Variables
 
-| Variable           | Description                              | Default                  |
-| ------------------ | ---------------------------------------- | ------------------------ |
-| `REDIS_URL`        | The URL of the Redis server              | `redis://localhost:6379` |
-| `USE_REDIS_IN_DEV` | Whether to use Redis in development mode | `false`                  |
-| `PORT`             | The port the application listens on      | `3000`                   |
+| Variable           | Description                              | Default                     |
+| ------------------ | ---------------------------------------- | --------------------------- |
+| `REDIS_URL`        | The URL of the Redis server              | `redis://localhost:6379`    |
+| `USE_REDIS_IN_DEV` | Whether to use Redis in development mode | `false`                     |
+| `PORT`             | The port the application listens on      | `3000`                      |
+| `MONGODB_URI`      | The URL of the MongoDB server            | `mongodb://localhost:27017` |
 
 ## Data Source
 
