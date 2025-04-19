@@ -4,9 +4,9 @@
 
 	onMount(async () => {
 		try {
-			const rooms = await fetch('/api/multiplayer/rooms');
+			const rooms = await fetch('/api/multiplayer/rooms/room-count');
 			const data = await rooms.json();
-			roomCount = data.rooms.length;
+			roomCount = data.count;
 		} catch (error) {
 			console.error('Error fetching room count:', error);
 		}
